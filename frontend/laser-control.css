@@ -1,0 +1,48 @@
+body[data-screen="laser-control"] main { grid-template-columns:1fr; }
+body[data-screen="laser-control"] .workspace { display:none; }
+body[data-screen="laser-control"] .panel { border:0; padding:24px 32px; }
+body[data-screen="laser-control"] .panel-view { width:100%; max-width:1440px; margin:0 auto; }
+.lc-heading,.lc-card-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.lc-heading h2 { margin:3px 0 8px; font-size:28px; }
+.lc-eyebrow { color:var(--accent); font-size:11px; letter-spacing:1.5px; margin:0; }
+.lc-banner { border:1px solid #856930; border-left:4px solid #d9ae51; background:#2b2518; padding:16px 20px; border-radius:8px; margin:18px 0; }
+.lc-banner p { color:#e0ceaa; margin:8px 0 0; line-height:1.5; }
+.lc-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.lc-card { padding:22px; border:1px solid var(--line); border-radius:12px; background:var(--panel); min-width:0; }
+.lc-card h3 { margin:0 0 15px; font-size:17px; }
+.lc-card h4 { overflow-wrap:anywhere; margin:10px 0; }
+.lc-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.lc-card label { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; font-size:12px; color:var(--muted); }
+.lc-card input,.lc-card select { min-width:0; width:100%; box-sizing:border-box; }
+.lc-actions { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+#lcJobTools { align-items:center; padding:14px; border:1px solid var(--line); border-radius:8px; }
+#lcDownload { padding:9px 12px; border:1px solid var(--line); border-radius:6px; color:var(--accent); text-decoration:none; }
+#lcJobControlStatus, #lcLayoutStatus { flex-basis:100%; }
+.lc-card button:disabled { opacity:.45; cursor:not-allowed; }
+.lc-badge { display:inline-block; padding:5px 9px; border-radius:6px; background:#28373c; color:#c8e0e7; font-size:12px; }
+.lc-card .hint { line-height:1.5; }
+#lcPreview { display:block; width:100%; height:300px; background:#0b1417; border:1px solid var(--line); border-radius:8px; margin:16px 0; }
+.lc-facts { display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:13px; }
+.lc-facts dt { color:var(--muted); }.lc-facts dd { margin:0; overflow-wrap:anywhere; }
+.lc-table-wrap { overflow:auto; margin:12px 0; }
+.lc-card table { width:100%; border-collapse:collapse; font-size:12px; }
+.lc-card th,.lc-card td { text-align:left; border-bottom:1px solid var(--line); padding:9px 7px; vertical-align:top; }
+.lc-card th { color:var(--muted); font-weight:500; }
+.lc-card td input[type="number"] { min-width:72px; padding:7px; }
+.lc-card td input[type="checkbox"] { width:auto; }
+.lc-history { grid-column:1/-1; }
+.lc-profiles,.lc-fallback { border-top:1px solid var(--line); padding-top:16px; margin-top:20px; }
+.lc-error { color:#ffb1a5; }.lc-ok { color:var(--accent); }
+#lcMessage { min-height:20px; overflow-wrap:anywhere; }
+#lcEvents p { padding:8px 0; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+@media(max-width:850px) { .lc-grid { grid-template-columns:1fr; } body[data-screen="laser-control"] .panel { padding:18px 14px; }.lc-heading { align-items:flex-start; } }
+
+.lc-supervised { padding:18px 20px; border:1px solid #427564; border-radius:12px; background:#172c26; margin:16px 0; }
+.lc-supervised h3 { margin:0; }
+.lc-cycle-steps { display:flex; flex-wrap:wrap; gap:10px 28px; padding-left:20px; color:#b7dbcf; font-size:12px; }
+.lc-supervised table { width:100%; font-size:12px; border-collapse:collapse; }
+.lc-supervised th,.lc-supervised td { padding:8px; text-align:left; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+
+.lc-start-now { border:2px solid #cfaa54; background:#493a20; color:#fff0c7; font-weight:700; }
+.lc-observed { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+.lc-observed select { width:auto; min-width:140px; }

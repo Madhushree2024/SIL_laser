@@ -1,0 +1,8 @@
+Tool: built-in image_gen
+Use case: background-extraction
+Output: template-logo-transparent-v2-source.png
+Application assets: template-logo-transparent-v2.png and template-logo-transparent-v2.ico
+The original supplied image remains manual-logo-original.png.
+
+Final prompt:
+BACKGROUND REMOVAL ONLY. This is a precise extraction of the existing logo, NOT a redesign or a new render. Keep the original green ring, original wooden curves and plank, green nozzle, straight orange beam and star-shaped spark pixel-faithful. Delete ALL white and gray checkerboard pixels outside AND INSIDE the logo. The centre of the ring around the nozzle must be fully transparent. All narrow spaces between nozzle parts must be fully transparent. Do NOT generate any glow, drop shadow, gray halo, blurred backdrop, gradients, ground, haze or lighting outside the original solid shapes. Clean sharp alpha edges and genuinely 100% transparent negative spaces. Do not add text. Do not enlarge or crop the original composition. Output just the isolated emblem on a completely transparent canvas.

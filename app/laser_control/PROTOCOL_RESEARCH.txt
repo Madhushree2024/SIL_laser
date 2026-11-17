@@ -1,0 +1,32 @@
+AWC7813 Ethernet integration evidence - 2026-11-11
+
+Operator-specified address: 192.168.8.8. Transport is Ethernet, not USB serial.
+
+Primary sources inspected:
+https://www.sztrocen.com/uploads/soft/20200903/AWC7813%20motion%20controller%20user%20manual%20RV1.3.pdf
+https://www.sztrocen.com/product-details.php?cid=14&id=18
+https://www.sztrocen.com/system.php?cid=29
+https://sztrocen.com/system.php?cid=19
+
+The operator manual describes PC/controller Ethernet configuration, panel
+operations, protection inputs, and software-generated UD5 offline files. It does
+not provide the programming contract needed here for host command implementation.
+Published firmware packages do not establish the installed unit's firmware or
+compatibility, and no firmware update is attempted by this component.
+
+Static inspection of installed LaserCAD binaries found candidate AWCLib exports
+such as AWC_OpenNetConnect, AWC_CheckSysStatus, AWC_DownloadWork, AWC_StartWork,
+AWC_StopWork and AWC_ContinuePauseWork. The DLLs are x86. These names do not establish
+function signatures, calling conventions, status bit definitions or compatibility
+with this AWC7813 CON. No DLL was loaded or called to infer a command contract.
+
+The installed USB driver INF uses WinUSB and VID_1FC9/PID_0085; that is historical
+installation evidence and is not used for the requested Ethernet implementation.
+
+Unresolved: network port and transport framing, discovery/identity, SDK ABI,
+firmware matrix, job encoding, layer/power/pass semantics, transfer integrity,
+acknowledgements and timeouts, explicit pause/resume versus toggle behaviour,
+readiness, fault/interlock telemetry, completion semantics and recovery rules.
+
+The adapter advertises no verified machine capabilities. IP reachability, an open
+port, a successful write or a LaserCAD button click cannot stand in for them.

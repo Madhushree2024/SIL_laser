@@ -1,0 +1,87 @@
+SAVING UPDATED MARKER POSITIONS
+In Calibration, edit measured marker coordinates or rectangular width/height.
+Save marker positions (no camera needed) persists the latest surveyed layout.
+Rectangular width/height edits are applied to rows when saving. Direct X/Y edits
+remain direct coordinates. Unsaved edits are protected from status refreshes.
+A changed layout invalidates previous photo calibration and nesting geometry.
+Capture/upload all four markers, then calibrate from the photo or run Auto Detect
+with per-photo calibration enabled. Detection, nesting, DXF and summaries use
+the latest saved positions. Old profiles/exports are retained only as backups/history.
+Lens calibration and the physical bed size are independent and remain unchanged.
+
+DXF IMPORT COORDINATES
+Before opening a DXF, the app verifies the supported LaserCAD executable and its
+ImportFile.ImportDockLoction preference. None (0) disables Center (1) import docking.
+A preference change requires LaserCAD to be closed once; the original SoftCfg.ini
+is backed up in AWCCfg/coordinate_import_backups. Other preferences stay unchanged.
+A running instance needing a change, an unknown executable, or a failed preference
+check blocks that import and automatic download. No machine Origin/Datum is set.
+Verify ruler/selection coordinates in LaserCAD after import; a preference check
+is not live confirmation of imported geometry or a machine-origin alignment.
+
+CURRENT DXF ORIGIN: NESTED-TEMPLATE BOUNDING-BOX TOP RIGHT
+Camera measurements and nesting still use ID 12 centre (0,0), -X toward ID 11 and -Y toward ID 13.
+For each DXF, find maximum X and maximum Y among all nested-template vertices.
+Subtract this point from every exported vertex: X_dxf = X - maxX; Y_dxf = Y - maxY.
+This is translation only; dimensions, orientation and spacing stay unchanged.
+The yellow bounding box and origin indicator appear only in app previews, never as DXF cutting paths.
+Set the physical laser job origin separately for this design reference. It is no longer ID 12 automatically.
+
+Camera-to-LaserCAD automation - operating notes
+
+Launch Start Automation.cmd in this project folder. Sign in with your copied
+application account. This application has its own data, desktop title, instance
+lock, port 8012, and browser storage (.desktop-state/Browser).
+
+BED AND CALIBRATION
+The configured bed reference is 950 x 650 mm. It is not used as an export envelope.
+The latest measured marker-centre span is 1050 x 510 mm, independent of that setting.
+ID 12 centre is (0,0) for camera measurements and nesting. DXF has its own template-box origin.
+-X points toward ID 11; -Y points toward ID 13. The surveyed marker coordinates are:
+ID 11 (-1050,0), ID 12 (0,0), ID 13 (0,-510), ID 10 (-1050,-510), DICT_4X4_50.
+
+All four markers must be visible in each capture. Lens correction precedes the
+perspective transform. The saved measurements determine the scale; marker spacing
+is not inferred from the nominal bed setting. Keep the camera/focus/surface fixed.
+The app rebases the existing four-marker homography on its next startup, with
+backups, so the lens model and the actual measured distances remain unchanged.
+
+LASER ORIGIN
+Every new DXF uses the top-right of the bounding box around all nested templates.
+Only template vertices determine this point; the material boundary is excluded.
+The export subtracts that point without rotation, reflection or scaling.
+The preview box and origin marker are not included in the DXF cutting paths.
+Old geometry must use the current ID 12 measurement frame before exporting.
+The physical laser job origin must correspond to this template-box design reference.
+The software coordinate choice does not move the laser head or set machine home.
+
+ONE SHEATH PER CYCLE
+1. Place and hold the sheath flat; keep all four markers visible.
+2. Select the templates, quantities, spacing, and edge clearance.
+3. Select DXF as the automatic export format and start Process Sheath.
+4. The app captures, corrects perspective, detects the outline, nests templates,
+   validates cut geometry without a bed-envelope rejection, and saves DXF/CSV records.
+5. The DXF opens in LaserCAD. Inspect the outline, layout, dimensions, origin,
+   and your validated areca cutting settings. Confirm the boundary at the machine.
+6. Start the cut separately. After it stops, inspect cut-through, unload the
+   parts, and load the next sheath before starting the next preparation cycle.
+
+Missing markers, an empty layout, invalid dimensions, or invalid cut geometry
+stop preparation. Negative or larger coordinates do not. No automatic retries send a job to the machine.
+Automatic Run Box is off. Opening a DXF does not start cutting.
+"Completed" means the preparation/export cycle finished; it is not proof that
+the machine cut or that the material separated. Cooling, extraction, air assist,
+focus, and material recipes are still machine/operator responsibilities.
+
+TESTING
+The new end-to-end tests use generated camera images with actual ArUco detection,
+measurement, nesting, and DXF parsing. LaserCAD handoff is mocked in regression
+tests; these do not validate controller response or physical cutting.
+The desktop smoke test verifies the sign-in screen and UI resources, without
+opening the camera or sending any machine commands.
+Test logs and machine-readable reports are in verification.
+
+For source tests: .venv-windows\Scripts\python.exe -m pytest -q
+For rebuilding: .venv-windows\Scripts\python.exe packaging\build_desktop.py
+
+The original application directory and executable are not used as a data fallback.

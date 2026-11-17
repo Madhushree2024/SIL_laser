@@ -1,0 +1,161 @@
+[
+  {
+    "id": "10in-square",
+    "name": "10\" square",
+    "width_mm": 254.0,
+    "height_mm": 254.0,
+    "shape": "square",
+    "quantity": 4,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0,
+      90.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 1
+  },
+  {
+    "id": "6in-square",
+    "name": "6\" square",
+    "width_mm": 152.39999999999998,
+    "height_mm": 152.39999999999998,
+    "shape": "square",
+    "quantity": 3,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0,
+      90.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 2
+  },
+  {
+    "id": "custom-b8143392-5dbf-4d25-818f-48e24d802a83",
+    "name": "Spoon",
+    "width_mm": 70.0,
+    "height_mm": 170.0,
+    "shape": "rectangle",
+    "quantity": 3,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 3
+  },
+  {
+    "id": "7in-square",
+    "name": "7\" square",
+    "width_mm": 177.79999999999998,
+    "height_mm": 177.79999999999998,
+    "shape": "square",
+    "quantity": 3,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0,
+      90.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 4
+  },
+  {
+    "id": "5in-square",
+    "name": "5\" square",
+    "width_mm": 127.0,
+    "height_mm": 127.0,
+    "shape": "square",
+    "quantity": 3,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0,
+      90.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 5
+  },
+  {
+    "id": "3in-square",
+    "name": "3\" square",
+    "width_mm": 76.19999999999999,
+    "height_mm": 76.19999999999999,
+    "shape": "square",
+    "quantity": 3,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0,
+      90.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 6
+  },
+  {
+    "id": "4in-square",
+    "name": "4\" square",
+    "width_mm": 101.6,
+    "height_mm": 101.6,
+    "shape": "square",
+    "quantity": 3,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0,
+      90.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 7
+  },
+  {
+    "id": "8in-square",
+    "name": "8\" square",
+    "width_mm": 203.2,
+    "height_mm": 203.2,
+    "shape": "square",
+    "quantity": 3,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0,
+      90.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 8
+  },
+  {
+    "id": "9in-square",
+    "name": "9\" square",
+    "width_mm": 228.6,
+    "height_mm": 228.6,
+    "shape": "square",
+    "quantity": 3,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0,
+      90.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 9
+  },
+  {
+    "id": "custom-36671123-a242-47ba-8dc2-cc2f85c480bc",
+    "name": "12\" square",
+    "width_mm": 300.0,
+    "height_mm": 300.0,
+    "shape": "square",
+    "quantity": 1,
+    "min_spacing_mm": 2.0,
+    "allowed_rotations": [
+      0.0,
+      90.0
+    ],
+    "enabled": true,
+    "polygon": null,
+    "priority": 10
+  }
+]

@@ -1,0 +1,44 @@
+# Local dependencies and build output
+.venv/
+.venv-windows/
+.venv-desktop/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+build/
+dist/
+packaging/base_setup/
+packaged-launch.cmd
+# Machine-local state, credentials and diagnostics
+/security/
+/laser_control_state/
+/logs/
+/output/
+/tmp/
+/verification/
+.env
+.env.*
+!.env.example
+*.log
+*.sqlite3
+*.sqlite3-*
+*.pem
+*.key
+*.pfx
+*.p12
+# Captures, jobs, production data and test workspaces
+/data/captures/
+/data/projects/
+/data/exports/
+/data/production/
+/data/camera_probe*/
+/data/aruco_visual_check/
+/.*tests*/
+/.pytest-tmp/
+/.desktop-state/
+# Supplier binaries and install archives belong in GitHub Releases
+*.dll
+*.exe
+*.zip
+.DS_Store
+__MACOSX/

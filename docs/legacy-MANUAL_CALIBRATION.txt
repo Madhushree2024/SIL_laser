@@ -1,0 +1,26 @@
+Separate manual working-area calibration version
+
+Open start-manual-calibration.bat in this folder. It uses port 8011 and
+this copy's data, accounts, settings and calibration. Close the production
+app before opening the USB camera here; both versions share the physical camera.
+The installed desktop shortcut continues to open the existing version.
+
+In Calibration > Measured working area:
+1. Place four different markers on the same flat plane as the material.
+2. Measure their centre positions in mm relative to your chosen working origin.
+3. For a rectangle, enter width and height between marker centres, check the
+   four IDs in origin/+X/opposite/+Y order, then Fill Rectangular Marker Positions.
+   Enter 950 and 650 only if those are the actual marker-centre distances.
+4. For other four-corner arrangements, enter each marker's measured X/Y directly.
+   The markers must surround an area; collinear or crossing arrangements are invalid.
+5. Capture/upload a photo showing all four markers, then Save Working Area.
+
+Coordinates and scale are saved only after successful marker detection.
+Previous scale and layout files are backed up in data/calibration.
+Changing working coordinates does not update machine alignment. Recheck laser
+origin, offsets, axis directions and dimensions before machine export/cutting.
+No new calibration has been applied by creating this copy.
+
+Source copy excludes virtual environments, build outputs and caches.
+On this PC the launcher can use the original project's Python dependencies.
+On another PC run setup.bat here to create a local environment.

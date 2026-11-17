@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "coordinate_frame": "id12_negative_xy",
+  "dictionary": "DICT_4X4_50",
+  "working_markers": [
+    {
+      "marker_id": 11,
+      "x_mm": -759.0,
+      "y_mm": 6.0
+    },
+    {
+      "marker_id": 12,
+      "x_mm": 0.0,
+      "y_mm": 0.0
+    },
+    {
+      "marker_id": 13,
+      "x_mm": 0.0,
+      "y_mm": -418.0
+    },
+    {
+      "marker_id": 10,
+      "x_mm": -757.0,
+      "y_mm": -418.0
+    }
+  ],
+  "machine_markers": [
+    {
+      "marker_id": 11,
+      "x_mm": 852.0,
+      "y_mm": 61.0
+    },
+    {
+      "marker_id": 12,
+      "x_mm": 93.0,
+      "y_mm": 67.0
+    },
+    {
+      "marker_id": 13,
+      "x_mm": 93.0,
+      "y_mm": 485.0
+    },
+    {
+      "marker_id": 10,
+      "x_mm": 850.0,
+      "y_mm": 485.0
+    }
+  ],
+  "working_to_machine": [
+    [
+      -1.0,
+      2.8374088567621003e-19,
+      93.0
+    ],
+    [
+      1.1511026236646136e-18,
+      -1.0,
+      67.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "bed_mm": [
+    915.0,
+    630.0
+  ],
+  "max_fit_error_mm": 0.0,
+  "fit_tolerance_mm": 1.0,
+  "saved_at": "2026-11-13T10:08:57.979372+00:00"
+}

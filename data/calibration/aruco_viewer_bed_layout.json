@@ -1,0 +1,25 @@
+{
+  "markers": [
+    {
+      "marker_id": 11,
+      "x_mm": -759.0,
+      "y_mm": 6.0
+    },
+    {
+      "marker_id": 12,
+      "x_mm": 0.0,
+      "y_mm": 0.0
+    },
+    {
+      "marker_id": 13,
+      "x_mm": 0.0,
+      "y_mm": -418.0
+    },
+    {
+      "marker_id": 10,
+      "x_mm": -757.0,
+      "y_mm": -418.0
+    }
+  ],
+  "dictionary": "DICT_4X4_50"
+}

@@ -1,0 +1,52 @@
+{
+  "mm_per_pixel": 1.613173007965088,
+  "working_width_mm": 1050.0,
+  "working_height_mm": 510.0,
+  "homography": [
+    [
+      1.6479800875106607,
+      0.02388376938421202,
+      -1490.7532336543898
+    ],
+    [
+      0.06786572348571364,
+      -1.6428648042869298,
+      346.2834546025305
+    ],
+    [
+      -5.7654933863538915e-05,
+      9.400396044445178e-05,
+      1.0
+    ]
+  ],
+  "image_width": 1280,
+  "image_height": 720,
+  "source": "aruco_workspace",
+  "marker_id": null,
+  "marker_size_mm": null,
+  "bed_markers": [
+    {
+      "marker_id": 11,
+      "x_mm": -1050.0,
+      "y_mm": 0.0
+    },
+    {
+      "marker_id": 12,
+      "x_mm": 0.0,
+      "y_mm": 0.0
+    },
+    {
+      "marker_id": 13,
+      "x_mm": 0.0,
+      "y_mm": -510.0
+    },
+    {
+      "marker_id": 10,
+      "x_mm": -1050.0,
+      "y_mm": -510.0
+    }
+  ],
+  "dictionary": "DICT_4X4_50",
+  "coordinate_frame": "id12_negative_xy",
+  "origin_marker_id": 12
+}

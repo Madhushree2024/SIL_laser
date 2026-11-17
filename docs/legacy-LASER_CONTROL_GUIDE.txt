@@ -1,0 +1,241 @@
+SAVING UPDATED MARKER POSITIONS
+In Calibration, edit measured marker coordinates or rectangular width/height.
+Save marker positions (no camera needed) persists the latest surveyed layout.
+Rectangular width/height edits are applied to rows when saving. Direct X/Y edits
+remain direct coordinates. Unsaved edits are protected from status refreshes.
+A changed layout invalidates previous photo calibration and nesting geometry.
+Capture/upload all four markers, then calibrate from the photo or run Auto Detect
+with per-photo calibration enabled. Detection, nesting, DXF and summaries use
+the latest saved positions. Old profiles/exports are retained only as backups/history.
+Lens calibration and the physical bed size are independent and remain unchanged.
+
+DXF IMPORT COORDINATES
+Before opening a DXF, the app verifies the supported LaserCAD executable and its
+ImportFile.ImportDockLoction preference. None (0) disables Center (1) import docking.
+A preference change requires LaserCAD to be closed once; the original SoftCfg.ini
+is backed up in AWCCfg/coordinate_import_backups. Other preferences stay unchanged.
+A running instance needing a change, an unknown executable, or a failed preference
+check blocks that import and automatic download. No machine Origin/Datum is set.
+Verify ruler/selection coordinates in LaserCAD after import; a preference check
+is not live confirmation of imported geometry or a machine-origin alignment.
+
+CURRENT DXF ORIGIN: NESTED-TEMPLATE BOUNDING-BOX TOP RIGHT
+Camera measurements and nesting still use ID 12 centre (0,0), -X toward ID 11 and -Y toward ID 13.
+For each DXF, find maximum X and maximum Y among all nested-template vertices.
+Subtract this point from every exported vertex: X_dxf = X - maxX; Y_dxf = Y - maxY.
+This is translation only; dimensions, orientation and spacing stay unchanged.
+The yellow bounding box and origin indicator appear only in app previews, never as DXF cutting paths.
+Set the physical laser job origin separately for this design reference. It is no longer ID 12 automatically.
+
+The desktop rebases existing four-marker homographies at its next startup,
+after acquiring its instance lock. Old files are backed up under
+data/calibration/coordinate_frame_backups. Camera lens calibration is unchanged.
+New captures recalculate perspective using the same surveyed marker coordinates.
+Historical captures, nestings, exports and machine jobs are retained as records.
+Detect and nest afresh before exporting an older project in the new frame.
+LaserCAD's physical job origin must match the template-box top-right design reference;
+the app does not move the laser or automatically establish that physical alignment.
+
+AUTOMATIC USB SETUP, DOWNLOAD AND TRANSFER CONFIRMATION
+The default communication mode is USB, using COM4 from your LaserCAD selection.
+Settings > Export & LaserCAD > LaserCAD USB port can change the port for another PC.
+The app verifies USB Mode and the configured COM entry in LaserCAD's dropdown,
+then applies Cut / 40 mm/s / 50% maximum power and requests Download Document once.
+
+The status waits for a NEW Communicating successful! dialog owned by this job's
+Download dialog. It shows Transfer completed only on that positive confirmation.
+A communication error shows Transfer failed. Missing confirmation or an unexpected
+prompt shows Transfer unconfirmed. The timeout defaults to 30 seconds and is editable.
+Old dialogs, other LaserCAD windows and a delivered click cannot establish success.
+All results are saved in the attempt history. Downloads are never automatically
+retried. Result dialogs remain open for the operator; Start remains manual.
+
+Existing minimum power is preserved and must be between 0 and 50%. Other laser
+channels are unchanged. Multiple/reference layers require manual review.
+No Start, Origin, Datum or Run Box is requested. The transfer status is LaserCAD's
+reported result; physical cutting and material position are not verified by it.
+
+CURRENT DISPLAY MODE
+LaserCAD fills the desktop client area below a compact return toolbar.
+The custom Laser Control dashboard, supervised-cycle option and split view are
+temporarily disabled. LaserCAD's native control panel remains part of LaserCAD.
+No machine parameters or drawing coordinates are changed by this display mode.
+
+SIL LASER CONTROL - integrated application tab
+
+OPENING THE UPDATED APPLICATION
+Close the currently running Template Cutting window when its work has finished,
+then run Start Automation.cmd from this project folder. Choose Process > Laser
+Control. This is part of the existing calibration/nesting application; there is
+no separate operator application or new installation.
+
+Each updated executable is staged in a dated folder under dist/releases so a
+running older build does not have to be forcibly closed during development.
+The root launcher uses packaged-launch.cmd to select the latest completed build
+and uses this project's existing workspace.
+
+JOB WORKFLOW
+After a DXF and its export records are saved, the LaserCAD tab opens automatically
+and hosts the installed LaserCAD drawing inside the desktop application. Laser
+Control remains available from Process > Laser Control or the tab toolbar. Tab opening does not wait for
+LaserCAD's preview readiness. This applies to automatic and manual DXF exports;
+SVG exports do not change tabs. Repeated readiness notifications do not keep
+pulling the operator back to the tab.
+
+Generated DXFs are registered automatically after successful export. The original
+DXF and existing LaserCAD handoff remain intact. Import DXF can select another
+file; imported files are retained privately with a content hash and unique job
+identity. The preview, filename, dimensions, layers, validation and job events
+appear in the tab. History Review selects an earlier job for inspection.
+
+Only explicitly millimetre DXFs are accepted as valid. Validation rejects bad
+structure, unsupported/non-planar geometry, self-intersecting or zero-area closed
+contours and missing cut geometry. Negative coordinates and geometry larger than
+the nominal bed dimensions are preserved without an export failure. Open paths are flagged for inspection because shared cuts
+can legitimately use them. The validator does not repair, move or rescale files.
+
+Enter a tested material recipe: material, thickness, speed in mm/s, power percent,
+passes, and optional per-layer values. Layer blanks inherit job defaults. Areca
+thickness defaults to 2.5 mm; no speed or power is invented. The SHEATH reference
+layer is disabled by default in this draft. Save job parameters before freezing
+the draft. Changes increment the revision and invalidate the prior snapshot.
+
+Save material profile stores a named, versioned recipe. Load into draft copies
+its values into the selected job; it does not change the machine. Profiles have
+not been validated for physical cutting merely because they are saved.
+
+CURRENT DIRECT-CONTROL LIMITATION
+The configured connection is Ethernet at 192.168.8.8. The network port, packet
+format, executable-job encoder, acknowledgements, firmware compatibility,
+readiness and safety/status semantics have not been verified. The app therefore
+does not open a controller socket, scan ports, load undocumented vendor functions,
+upload jobs, or send motion/firing commands. Connect, Disconnect, Transfer,
+Direct Start, Pause, Resume and Stop remain disabled and blocked by the direct API.
+The separate LaserCAD panel actions described below use the installed native UI.
+Editing configuration cannot bypass this capability restriction.
+
+Validate and freeze job draft creates an immutable preparation snapshot. Its
+state is conversion_required, not executable or ready to cut. No UD5 file or
+controller job is fabricated. Status, progress, elapsed/remaining cutting time,
+alarms, faults, completion and interlock states remain unavailable. An operator
+checkbox cannot substitute for manufacturer safety signals.
+
+LASERCAD TAB
+The desktop hosts the actual installed Windows application, not a DXF screenshot.
+LaserCAD must be installed. Open current drawing loads the selected export; Retry
+display attaches its native window. Show separately restores the external window.
+Closing our application also restores hosted windows. Switching tabs hides the
+native pane. Incompatible display-scaling modes are rejected before attachment.
+
+Keep using Laser Control for the supervised cycle review, Start confirmation and
+completion record. Native LaserCAD controls remain independent of that workflow.
+The tab itself sends no Download, Run Box, Start or motion command.
+
+LASERCAD FALLBACK
+The Job operations toolbar enables Download DXF and Revalidate for the selected
+job. Download job via LaserCAD and Run Box via LaserCAD become available only
+when its detected panel exposes the action and matches this job's exact file
+identity/content. Stop via LaserCAD uses the existing priority Stop route and is
+available when that panel exposes Stop, even if a preparation operation is busy.
+Every panel command is a single explicit operator request, with no retry. These
+are UI requests, not direct IP commands or controller acknowledgements. The
+operator must complete any LaserCAD download dialog that opens.
+Start via LaserCAD requires explicit operator confirmation of this DXF revision,
+LaserCAD machine selection, downloaded job, actual cutting settings and machine
+readiness. Pause and Resume both send the native Pause/Continue toggle ONCE.
+Their confirmations require observing RUNNING for Pause or PAUSED for Resume.
+The application cannot infer that state. Cancel sends no request. Changed job
+revision, file content, window title or communication selection blocks a stale
+confirmation. Requests are logged as requests; cutting times stay unavailable.
+The matching job window is selected even when other different drawings are open;
+duplicate matching drawings are rejected. Stop remains a priority panel request.
+
+SPLIT SCREEN
+After DXF handoff, the desktop application arranges Laser Control on the left and
+the matching LaserCAD drawing on the right. Split screen repeats this arrangement;
+Restore windows restores saved positions. These are separate native windows so
+LaserCAD dialogs and controls remain accessible. No cutting command is sent by
+arranging windows. At least 1120 x 600 working-area pixels are required. Browser
+mode has no native split support. Failed arrangement does not invalidate the DXF.
+
+Open this DXF in LaserCAD reuses the current handoff mechanism without issuing
+Run Box or Start. Private job copies have unique filenames to preserve the
+existing bridge's document matching. Dashboard speed, power, passes and layer
+settings are NOT applied to LaserCAD automatically. Review those settings and
+the origin/communication mode in LaserCAD, including disabling reference layers
+if present. Existing LaserCAD controls opens the unchanged Export controls.
+Opening a DXF does not establish successful transfer or cutting completion.
+
+PERSISTENCE AND PERMISSIONS
+Jobs, profile versions and event history are stored in
+laser_control_state/history.sqlite3, outside the downloadable data directory.
+Cutting start/completion times and duration remain empty without controller
+evidence. Preparation failures and rejected command requests are recorded.
+Read-only users can inspect data; operators can import/edit/prepare/handoff jobs;
+configuration permission is needed to save material profiles or the address.
+Existing authentication, CSRF protection and audit logging remain in force.
+
+COMMISSIONING REQUIRED FOR DIRECT OPERATION
+Obtain the official AWC7813 Ethernet SDK/protocol, headers, examples, job encoding
+contract, transfer acknowledgements, error/status definitions and firmware support
+matrix from SIL/Trocen. The locally inspected libraries are 32-bit and cannot be
+loaded directly into this app's 64-bit Python process. Prefer a documented 64-bit
+SDK; an internal worker would require separate verified integration work.
+
+Begin with verified read-only identity/status operations, then manufacturer-
+approved non-firing tests, and only then supervised operator-confirmed cutting.
+Emergency stop, water flow, door, exhaust, laser protections and limits must stay
+under the manufacturer's safety mechanisms. Software Stop is not emergency stop.
+
+VALIDATION
+See verification/SIL_LASER_VALIDATION.txt and the associated test logs. No physical
+cutting or undocumented controller command was attempted. Calibration, nesting,
+DXF generation and existing hardware movement algorithms were not changed.
+
+
+SUPERVISED CUTTING CYCLE (2026-11-12)
+The processing page defaults to Supervised cutting cycle with DXF export. The
+Laser Control page also provides Sheath loaded - Prepare job. Confirm the machine
+is idle, the new sheath is positioned and hands are clear. This reuses existing
+capture, calibration, detection and nesting. It does not automatically Start.
+Turn off Supervised cutting cycle when an export-only SVG workflow is required.
+
+After DXF preparation, review the matching LaserCAD drawing in split view. Use
+Download job via LaserCAD and complete any download dialog there. Review the
+actual LaserCAD speed, power, passes, layers, origin, sheath placement and machine
+selection; confirm the original protections, water and exhaust are ready. Click
+Confirm LaserCAD review, then Start via LaserCAD for a separate confirmation.
+A new download or changed job revision invalidates the prior approval for Start.
+
+After Start delivery is attempted, no new capture/export/job preparation is
+allowed until the operator resolves that cycle. Pause/Resume remain confirmed
+toggle requests; Stop is a priority request. Observe actual machine behavior.
+Click Cutting completed - Confirm only after observing cutting finished and the
+machine stopped. This creates an OPERATOR-REPORTED completion, not controller
+telemetry. It enables loading the next sheath but never begins capture itself.
+A stopped/interrupted cycle requires Confirm stopped / Abort cycle instead.
+This records an abort and sends NO Stop command. Use actual machine controls if
+needed before confirming that the machine is stopped.
+
+Cycle state and operator events persist in the private history.sqlite3 database.
+Start intent and the single dispatch claim are recorded before the native click.
+A timeout, lost response or app restart never causes an automatic Start retry.
+Unfinished cutting states remain locked for operator resolution after restart.
+Preparation interrupted by restart requires observed-stop/abort recovery.
+Cycle history labels Start requested and Operator confirmed end. Existing
+execution timestamps/duration remain unknown; request-to-confirm time is not
+reported as measured cutting time. Existing production reports count exported
+layouts and must not be interpreted as controller-verified completed cuts.
+
+
+BUTTON-BASED OPERATION UPDATE - 2026-11-12
+Popup approvals were removed from the supervised workflow. The explicit Load,
+Review, Start, Completion and Abort buttons are now the operator confirmations.
+Start cutting now (LaserCAD) sends Start immediately when enabled. Review and
+machine-stopped completion requirements remain enforced by the backend.
+Pause/Resume require choosing the actual observed running/paused state inline;
+the selection resets after every dispatch attempt, including an error. Unsaved
+parameter drafts block replacement inline; use Save or Discard draft explicitly.
+The application's unrelated template/account deletion dialogs and LaserCAD's
+own native dialogs are outside this supervised-cycle change.
+The current step-by-step procedure is SUPERVISED_OPERATOR_STEPS.txt.

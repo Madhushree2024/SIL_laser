@@ -1,0 +1,54 @@
+{
+  "origin_marker_id": 12,
+  "origin_point": "Centre of outer black marker square",
+  "positive_x": "toward ID11 (left)",
+  "positive_y": "toward ID13 (down)",
+  "alignment": {
+    "enabled": true,
+    "reference": "custom",
+    "design_x_mm": 1250.0,
+    "design_y_mm": 0.0,
+    "laser_x_mm": 0.0,
+    "laser_y_mm": 0.0,
+    "rotation_deg": 0.0,
+    "flip_x": true,
+    "flip_y": false
+  },
+  "matrix": [
+    [
+      -1.0,
+      -0.0,
+      1250.0
+    ],
+    [
+      -0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0,
+      0,
+      1
+    ]
+  ],
+  "marker_coordinates_mm": {
+    "11": [
+      1250.0,
+      0.0
+    ],
+    "12": [
+      0.0,
+      0.0
+    ],
+    "13": [
+      0.0,
+      560.0
+    ],
+    "10": [
+      1250.0,
+      560.0
+    ]
+  },
+  "physical_laser_origin_set": false,
+  "note": "DXF software alignment. Physical controller user origin and positive jog directions must match. Measurement calibration is unchanged."
+}

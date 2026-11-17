@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "reference": "templates_top_right",
+  "design_x_mm": 0,
+  "design_y_mm": 0,
+  "laser_x_mm": 0,
+  "laser_y_mm": 0,
+  "rotation_deg": 0,
+  "flip_x": false,
+  "flip_y": false
+}

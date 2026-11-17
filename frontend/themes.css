@@ -1,0 +1,26 @@
+/* Native LaserCAD keeps its vendor theme; these colors affect the app only. */
+:root[data-theme="light"] {
+  color-scheme:light; --bg:#f1f5f7; --panel:#ffffff; --line:#c3d0d6;
+  --text:#182b33; --muted:#4e646e; --accent:#08785c; --warn:#855800; --danger:#b32332;
+}
+:root[data-theme="light"] :is(.topbar,.navigation-bar,.process-dropdown>summary,.process-dropdown nav) { background:#e6eef1; color:var(--text); }
+:root[data-theme="light"] :is(button,.file,input,select,textarea) { background:#fff; color:var(--text); }
+:root[data-theme="light"] :is(button:hover,.file:hover,nav button.active,.return-button.active) { background:#e0f2eb; color:#075b46; }
+:root[data-theme="light"] :is(.process-button,.template-primary,[data-panel="settings"] #saveConfig) { background:#08785c; color:#fff; }
+:root[data-theme="light"] :is(.settings-card,.template.template-card,.message,.piece-dimensions,.dimension-values>div,.process-stage-box,.production-metric,.lc-card,#nestingPreviewLegend) { background:var(--panel); color:var(--text); border-color:var(--line); }
+:root[data-theme="light"] :is(.template-run-summary,.template-card.is-active,.cycle-result,.nesting-preview-card,.process-stage-box[data-state="completed"],.cycle-steps [data-state="completed"]) { background:#e2f3e9; color:#185436; }
+:root[data-theme="light"] :is(.template-eyebrow,#activeTemplateDetail,.template-badge,.is-active .template-badge,.nesting-preview-legend span,#nestingPreviewLegend span) { background:#e4efe9; color:#24523d; }
+:root[data-theme="light"] :is(.cycle-steps [data-state="running"],.process-stage-box[data-state="running"],.pill.warn) { background:#fff2d7; color:#795300; }
+:root[data-theme="light"] :is(.cycle-steps [data-state="failed"],.process-stage-box[data-state="failed"],#cycleState[data-state="failed"]) { background:#ffe5e7; color:#a81d2c; }
+:root[data-theme="light"] :is(.account-error,.message.error,.template-danger) { color:var(--danger); }
+:root[data-theme="light"] :is(.dimension-values strong,.live-nesting-info,.material-scope-warning,.workflow-timer-row[data-state="running"] dd) { color:#815500; }
+:root[data-theme="light"] :is(.production-table th,.production-bar-track,.cycle-steps li>span) { background:#e4edf1; color:var(--text); }
+:root[data-theme="light"] #cycleState { background:#dceee7; color:#17583f; }
+:root[data-theme="light"] #laserCadOriginIndicator { background:#fff6cd; color:#654c00; border-color:#b99c37; }
+:root[data-theme="light"] :is(.viewer,#alignmentCanvas,#nestingPreviewCanvas,#laserCadNativeSlot) { background:#e4ebee; }
+:root[data-theme="light"] .laser-control-panel .laser-stop { background:#a8212d; color:#fff; }
+[data-theme-toggle] { white-space:nowrap; }
+/* Wrap controls instead of silently clipping them on a narrow display. */
+.lasercad-toolbar { height:auto; min-height:36px; flex-wrap:wrap; }
+#laserCadTabStatus { flex:1 1 180px; }
+#laserCadNativeSlot { min-width:0; min-height:0; overflow:hidden; }

@@ -1,0 +1,53 @@
+/* Fit the app by wrapping/reflowing, rather than hiding an overflowing page. */
+html,body {width:100%;max-width:100%;}
+*,*::before,*::after {box-sizing:border-box;}
+.topbar {display:grid;grid-template-columns:minmax(180px,1fr) auto;min-height:76px;height:auto;padding:10px clamp(12px,2vw,24px);gap:12px;}
+.brand,.brand-copy,.header-controls {min-width:0;max-width:100%;}
+.brand {gap:12px;}
+.brand h1 {font-size:clamp(17px,1.4vw,21px);letter-spacing:.03em;overflow-wrap:anywhere;}
+.header-controls {display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px;flex:initial;}
+.header-controls button,.header-controls summary {font-size:13px;}
+.signed-in-user {max-width:160px;overflow-wrap:anywhere;}
+.header-controls .process-button {min-width:120px;}
+[data-theme-toggle],.lasercad-toolbar [data-theme-toggle] {display:inline-flex;align-items:center;justify-content:center;flex:none;width:34px;height:34px;min-width:34px;min-height:34px;border-radius:50%;padding:6px;margin:0;line-height:0;background:transparent;}
+[data-theme-toggle] svg {display:block;width:20px;height:20px;pointer-events:none;}
+.auth-card [data-theme-toggle] {justify-self:end;}
+.cycle-top-row {grid-column:1/-1;grid-row:1;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1.15fr);align-items:center;gap:12px;min-width:0;}
+.cycle-top-row .cycle-heading {grid-column:auto;grid-row:auto;min-width:0;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:8px 12px;}
+#cycleState {max-width:100%;white-space:normal;overflow-wrap:anywhere;}
+.cycle-quick-actions {display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;min-width:0;}
+.cycle-quick-actions button {width:auto;min-height:36px;margin:0;padding:6px 12px;font-size:13px;}
+#automaticWorkflow {max-width:100%;white-space:normal;}
+.cycle-top-row .processing-actions {grid-column:auto;grid-row:auto;min-width:0;max-width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 12px;}
+.cycle-top-row .processing-actions label {min-width:0;max-width:100%;}
+.cycle-top-row .checkbox-label {white-space:normal;}
+.cycle-top-row #workflowStatus {flex:1 1 100%;min-width:0;overflow-wrap:anywhere;text-align:right;}
+.cycle-dashboard > #spaceCycleBar {grid-column:1/-1;grid-row:2;min-width:0;max-width:100%;}
+body[data-screen="process"] .cycle-dashboard > .process-stage-box {grid-column:1;grid-row:3;min-width:0;}
+body[data-screen="process"] .cycle-dashboard > .piece-dimensions {grid-column:2;grid-row:3;min-width:0;}
+#spaceCycleBar strong,#spaceCycleBar span {min-width:0;max-width:100%;overflow-wrap:anywhere;}
+#spaceCycleBar button {max-width:100%;white-space:normal;}
+#laserCadHandoffStatus {grid-column:1/-1;overflow-wrap:anywhere;}
+.workspace,.panel,main,.panel-view,.preview-grid,.preview-panel {min-width:0;max-width:100%;}
+input,select,textarea {min-width:0;}
+@media(max-width:1200px) {
+ .cycle-top-row {grid-template-columns:minmax(0,1fr) auto;}
+ .cycle-top-row .processing-actions {grid-column:1/-1;justify-content:flex-start;}
+ .cycle-top-row #workflowStatus {text-align:left;}
+}
+@media(max-width:1100px) {
+ .topbar {grid-template-columns:minmax(0,1fr);}
+ .header-controls {justify-content:flex-start;margin-left:0;}
+}
+@media(max-width:800px) {
+ .cycle-top-row {grid-template-columns:minmax(0,1fr);}
+ .cycle-quick-actions {justify-content:flex-start;}
+ body[data-screen="process"] .cycle-dashboard {grid-template-columns:minmax(0,1fr);}
+ body[data-screen="process"] .cycle-dashboard > .process-stage-box {grid-column:1;grid-row:3;}
+ body[data-screen="process"] .cycle-dashboard > .piece-dimensions {grid-column:1;grid-row:4;}
+}
+
+.account-user-row {grid-template-columns:minmax(90px,1fr) minmax(125px,1fr) minmax(135px,1fr) auto minmax(130px,1.1fr) auto auto;}
+.account-user-row > * {min-width:0;max-width:100%;}
+@media(max-width:1000px) {.account-user-row {grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:600px) {.account-user-row {grid-template-columns:minmax(0,1fr);}}

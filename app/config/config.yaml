@@ -1,0 +1,57 @@
+camera:
+  device: auto
+  resolution:
+    width: 1280
+    height: 720
+  fps: 30
+workspace:
+  width_mm: 915
+  height_mm: 630
+  physical_width_mm: 960
+  physical_height_mm: 650
+  origin: id12_centre
+  enforce_bed_bounds: false
+  coordinate_frame: id12_negative_xy
+automation:
+  refresh_workspace_calibration: true
+machine_workflow:
+  enabled: false
+  park_x_mm: 0
+  park_y_mm: 0
+calibration:
+  aruco:
+    enabled: true
+    dictionary: DICT_4X4_50
+    marker_id: 10
+    marker_size_mm: 95
+nesting:
+  spacing_mm: 0
+  edge_clearance_mm: 3
+  rotation_step_deg: 5
+  strategy: common_line
+  precision_mm: 0.1
+vision:
+  min_area_px: 5000
+  blur_kernel: 5
+  morphology_kernel: 9
+  threshold_mode: otsu
+export:
+  output_folder: data/exports
+units:
+  system: metric
+laser_control:
+  dashboard_enabled: false
+  host_lasercad: true
+  controller_ip: 192.168.8.8
+  split_after_dxf: false
+lasercad:
+  auto_frame_after_dxf: false
+  auto_open_dxf: true
+  executable: ''
+  prepare_and_download:
+    enabled: true
+    speed_mm_s: 90
+    power_percent: 10
+    work_mode: Cut
+    communication_mode: USB
+    usb_port: MachName:_AWC_D2713611

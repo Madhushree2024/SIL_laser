@@ -1,0 +1,41 @@
+{
+  "source_file": "C:\\Users\\Admin\\cutting\\camera_calibration.npz",
+  "image_resolution_px": {
+    "width": 1920,
+    "height": 1080
+  },
+  "camera_intrinsic_matrix_K": [
+    [
+      358.48056801222765,
+      0.0,
+      999.7739342038418
+    ],
+    [
+      0.0,
+      359.5359408344842,
+      558.0317760777319
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "distortion_coefficient_order": [
+    "k1",
+    "k2",
+    "p1",
+    "p2",
+    "k3"
+  ],
+  "distortion_matrix_D": [
+    [
+      -0.05449747841939519,
+      0.0037354326261285513,
+      -0.003162002163109113,
+      0.0027725571523579645,
+      -0.00013325001368710607
+    ]
+  ],
+  "note": "k1, k2, k3 are radial distortion coefficients; p1, p2 are tangential distortion coefficients. These lens calibration parameters do not change with the ArUco marker size."
+}

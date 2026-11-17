@@ -1,0 +1,62 @@
+SUPERVISED CUTTING TEST - BUTTON CONTROLS, NO APP APPROVAL POPUPS
+12 November 2026
+
+Start sends its request immediately when enabled. Each labelled button is the
+operator action; there is no extra popup. Completion remains operator-reported.
+Native LaserCAD download/file dialogs may still appear. No automatic firing,
+interlock bypass, controller telemetry or automatic cutting settings are added.
+
+FIRST: PREPARATION CHECK WITHOUT STARTING A CUT
+1. When the machine is idle, close the prior automation window and open the
+   latest packaged TemplateCutting.exe. Sign in as an operator/Admin.
+2. Follow the SIL machine's normal startup and focus procedure. Check water,
+   exhaust and original machine protections. Verify LaserCAD is configured for
+   the intended machine; saving IP 192.168.8.8 in our app does not connect it.
+3. Select one small template already known to fit. Load one 2-3 mm areca sheath
+   with the machine stopped. Keep the four calibration markers visible and the
+   camera fixed. Keep hands clear before initiating preparation.
+4. In Laser Control click Sheath loaded - Prepare job. Capture, calibration,
+   outline detection, nesting and DXF export should run without a popup or Start.
+   Expected result: Review LaserCAD, matching DXF filename and visible layout.
+5. Use Split screen if needed. Check detected outline, template dimensions,
+   placement, actual laser origin and full cutting footprint. Export coordinates
+   are preserved; the application does not reject out-of-bed coordinates.
+   If anything is wrong, remain stopped, use Machine stopped - Abort cycle,
+   correct the setup and prepare a fresh cycle. Do not proceed to Start.
+
+THEN: A SUPERVISED SMALL TRIAL CUT
+6. In the matching LaserCAD drawing verify the ACTUAL speed, power, passes,
+   enabled layers, origin and machine selection. Use your proven machine/material
+   recipe; no new power/speed values are prescribed here. Dashboard parameter
+   drafts are NOT automatically applied to LaserCAD.
+7. Click Download job via LaserCAD. Complete any LaserCAD dialog and verify
+   the intended job transferred. Optionally use Run Box only under the machine's
+   normal non-cutting framing procedure, checking the footprint fits the sheath
+   and bed. Do not use framing as proof of safe cutting settings.
+8. When the layout/settings/download/placement and machine readiness have been
+   checked, click Reviewed and downloaded - Ready to Start. This records review
+   only. Cutting must not start from this button.
+9. With the machine ready under its standard operating procedure and hands
+   clear, click Start cutting now (LaserCAD) ONCE. There is NO popup approval.
+   Expected application stage: Awaiting operator completion. Observe the actual
+   machine; this stage records a request, not controller-confirmed cutting.
+   If a timeout or uncertain response occurs, inspect the machine; do not retry
+   Start automatically. Use its physical emergency stop for immediate danger.
+10. Optional controls test: only when observed RUNNING, select Running in
+    Observed machine state and click Pause (toggle) once. After observing it
+    PAUSED, select Paused and click Resume (toggle) once. The selector clears
+    after each attempt, including failures. Both use LaserCAD Pause/Continue.
+11. After observing that cutting has finished AND the machine is stopped,
+    click Cut finished and machine stopped - Record completion ONCE. No popup
+    appears. Expected result: saved cycle marked completed and Load sheath
+    enabled. Verify the result in Recent supervised cycles. No new capture
+    should start automatically.
+12. Inspect/remove the cut piece only under the normal safe unloading procedure.
+    Load the next sheath when stopped and explicitly prepare another cycle.
+
+STOP/INTERRUPTION TEST OR RECOVERY
+Stop via LaserCAD requests a software Stop; it is not the physical emergency
+stop. Observe the machine before acting further. Once stopped, use Machine
+stopped - Abort cycle for an interrupted/uncertain cycle. This abort button
+records the operator's report; it sends NO Stop command. Restarting the app
+must keep unresolved cycles blocked until operator resolution.

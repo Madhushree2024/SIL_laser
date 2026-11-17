@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Template Cutting Automation v2026.11.17.4</title>
+    <script src="/static/theme.js?v=20261117-4"></script>
+    <link rel="icon" href="/static/assets/template-logo-transparent-v2.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/static/assets/template-logo-transparent-v2.png" />
+    <link rel="stylesheet" href="/static/styles.css?v=20261115-role-ui" />
+    <link rel="stylesheet" href="/static/laser-control.css?v=20261112-buttons" />
+    <link rel="stylesheet" href="/static/themes.css?v=20261117-4" />
+    <link rel="stylesheet" href="/static/layout.css?v=20261117-4" />
+  </head>
+  <body data-screen="process" data-auth="locked" data-laser-control="disabled">
+    <header class="topbar">
+      <div class="brand"><img class="brand-logo" src="/static/assets/template-logo-transparent-v2.png" alt="Template Cutting logo" width="48" height="48" /><div class="brand-copy"><h1>Template Cutting <small class="app-version" data-app-version>v2026.11.17.4</small></h1><span id="currentSectionLabel" class="hint" aria-live="polite">Processing workspace</span></div><span id="statusPill" class="pill warn">OFFLINE</span></div>
+      <div class="header-controls"><button type="button" data-theme-toggle aria-label="Switch to light mode">Light mode</button><span id="signedInUser" class="signed-in-user"></span><button id="openAccount" type="button">Account</button><button id="signOut" type="button">Sign out</button><button id="processSheath" class="return-button process-button active" aria-pressed="true" title="Return to the processing workspace">Process Sheath</button>
+      <details id="processSections" class="process-dropdown">
+        <summary title="Choose a section without starting processing">Process <span aria-hidden="true">v</span></summary>
+      <nav aria-label="Process sections">
+        <button data-view="camera" aria-pressed="false">Camera</button>
+        <button data-view="calibration" aria-pressed="false">Calibration</button>
+        <button data-view="sheath" aria-pressed="false">Sheath</button>
+        <button data-view="templates" aria-pressed="false">Templates</button>
+        <button data-view="nesting" aria-pressed="false">Nesting</button>
+        <button data-view="cutting-time" aria-pressed="false">Cutting Time</button>
+        <button data-view="export" aria-pressed="false">Export</button>
+        <button data-view="lasercad" aria-pressed="false">LaserCAD</button>
+        <button data-view="laser-control" aria-pressed="false" disabled title="Temporarily disabled">Laser Control (disabled)</button>
+        <button data-view="settings" aria-pressed="false">Settings</button>
+        <button data-view="data" aria-pressed="false">Data</button>
+      </nav>
+      </details>
+      </div>
+    </header>
+
+    <section id="authGate" class="auth-gate" aria-labelledby="authTitle">
+      <form id="signInForm" class="auth-card">
+        <img class="auth-logo" src="/static/assets/template-logo-transparent-v2.png" alt="Template Cutting logo" width="72" height="72" />
+        <h2 id="authTitle">Sign in</h2>
+        <button type="button" data-theme-toggle aria-label="Switch to light mode">Light mode</button>
+        <p id="authIntro">Use your application account to continue.</p>
+        <label>Username<input id="authUsername" autocomplete="username" minlength="3" maxlength="50" required /></label>
+        <label>Password<input id="authPassword" type="password" autocomplete="current-password" maxlength="256" required /></label>
+        <label id="authConfirmLabel" hidden>Confirm password<input id="authConfirm" type="password" autocomplete="new-password" maxlength="256" /></label>
+        <p id="authPasswordHelp" class="hint" hidden>Choose a password with at least 12 characters. Keep the administrator credentials somewhere safe.</p>
+        <p id="authError" class="account-error" role="alert"></p>
+        <button id="signInSubmit" type="submit">Sign in</button>
+      </form>
+    </section>
+    <dialog id="accountDialog" aria-labelledby="accountTitle">
+      <div class="account-dialog-heading"><h2 id="accountTitle">Your account</h2><button id="closeAccount" type="button">Close</button></div>
+      <p id="accountStatus" role="status" aria-live="polite"></p>
+      <form id="changePasswordForm" class="account-form">
+        <h3>Change your password</h3>
+        <label>Current password<input id="currentPassword" type="password" autocomplete="current-password" required maxlength="256" /></label>
+        <label>New password<input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required /></label>
+        <label>Confirm new password<input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required /></label>
+        <button type="submit">Change password and sign out</button>
+      </form>
+      <section id="manageAccounts" hidden>
+        <h3>Manage users</h3>
+        <p class="hint" data-role-help>Admin: full access. Editor/Manager: templates, processing and exports. Read-only: previews and reports unless Admin assigns a workflow. Assigned users can run that workflow; Settings, calibration and account management stay restricted.</p>
+        <form id="addAccountForm" class="account-form">
+          <label>New username<input id="newUsername" autocomplete="off" minlength="3" maxlength="50" required /></label>
+          <label>Initial password<input id="initialPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required /></label>
+          <label>Role<select id="newUserRole"><option value="editor">Editor / Manager</option><option value="viewer">Read-only</option><option value="admin">Admin</option></select></label>
+          <label>Workflow<select id="newUserWorkflow"><option value="" hidden disabled>Not assigned (view only for Read-only)</option><option value="automated" selected>Automated</option><option value="manual">Manual</option></select></label>
+          <button type="submit">Add user</button>
+        </form>
+        <div id="accountList" class="account-list"></div>
+        <h3>Recent activity</h3><button id="refreshAccounts" type="button">Refresh users and activity</button>
+        <div class="account-audit-wrap"><table class="account-audit"><thead><tr><th>Time (India)</th><th>User</th><th>Action</th><th>Result</th></tr></thead><tbody id="accountAudit"></tbody></table></div>
+      </section>
+    </dialog>
+
+    <main>
+      <section class="workspace">
+        <section class="cycle-dashboard" aria-label="Workflow cycle progress">
+          <div class="cycle-top-row"><div class="cycle-heading"><strong id="cycleTitle">Cycle 1</strong><span id="cycleState" role="status" aria-live="polite">Ready</span></div><div class="cycle-quick-actions"><button id="manualDatum" type="button" disabled title="Manual Datum only; requires an idle machine">Datum</button><button id="automaticWorkflow" type="button" class="return-button" title="Show the automatic workflow status and controls">Automatic workflow</button></div>
+          <div class="processing-actions"><label>Automatic export<select id="workflowFormat"><option value="dxf">DXF</option><option value="svg">SVG</option></select></label><div id="cycleResult" class="inline-export-links" hidden><span id="cycleResultText" hidden></span><a id="cycleExportLink" target="_blank">Open exported file</a><a id="cycleCsvLink" download hidden>Download CSV data</a></div><p id="workflowStatus" role="status" aria-live="polite">Ready</p></div>
+          </div>
+          <p id="laserCadHandoffStatus" class="hint" role="status" aria-live="polite" hidden></p>
+          <div id="processStageBox" class="process-stage-box" data-state="ready" role="status" aria-live="polite" aria-atomic="true">
+            <span class="process-stage-icon" aria-hidden="true"></span>
+            <div><span id="processStageStep" class="process-stage-step">Automatic workflow</span><strong id="processStageTitle">Ready</strong><p id="processStageDetail" class="hint">Press Space to start.</p>
+              <div class="workflow-timings" aria-live="off"><div class="workflow-timing-summary"><strong id="workflowCurrentTimer">Stage: -</strong><span id="workflowTotalTimer" title="Total time recorded by the workflow worker">Cycle: -</span></div><dl id="workflowStageTimers" aria-label="Elapsed time for each workflow stage"></dl></div>
+            </div>
+          </div>
+          <ol class="cycle-steps" hidden aria-hidden="true">
+            <li id="cycleCapture" data-state="pending"><span>1</span><div>Capture<small id="cycleCaptureStatus">Waiting</small></div></li>
+            <li id="cycleCorrection" data-state="pending"><span>2</span><div>Lens correction<small id="cycleCorrectionStatus">Waiting</small></div></li>
+            <li id="cycleDetection" data-state="pending"><span>3</span><div>Detection<small id="cycleDetectionStatus">Waiting</small></div></li>
+            <li id="cycleNesting" data-state="pending"><span>4</span><div>Nesting<small id="cycleNestingStatus">Waiting</small></div></li>
+            <li id="cycleExport" data-state="pending"><span>5</span><div>Export<small id="cycleExportStatus">Waiting</small></div></li>
+          </ol>
+          <section class="piece-dimensions" aria-label="Detected material dimensions">
+
+            <div class="dimension-heading"><strong id="dimensionContext">No piece measured yet</strong><label class="checkbox-label"><input id="showDimensions" type="checkbox" checked /> Show on image</label><details id="sheathMeasurements" hidden aria-label="Individual sheath dimensions">
+              <summary>Individual sheath measurements</summary><div id="sheathMeasurementList"></div>
+              <label>Show dimensions for<select id="sheathSelection"></select></label>
+              <p class="hint" data-role-help>Each sheath receives its own template quantities and nesting priority. Keep a visible gap between sheaths.</p>
+            </details><details class="cycle-guidance"><summary>Cycle guidance and measurement notes</summary><p id="cycleNextHelp" class="hint">Place the piece, click the workspace and press Space to start.</p><p id="dimensionDetail" class="hint">Capture and detect a piece to measure it. Live video alone does not update dimensions.</p></details></div>
+            <p id="materialScopeWarning" class="hint material-scope-warning" role="status" hidden></p>
+            <div class="dimension-values">
+              <div><span id="dimensionWidthLabel">Edge-aligned width</span><strong id="dimensionWidth">--</strong></div>
+              <div><span id="dimensionHeightLabel">Edge-aligned height</span><strong id="dimensionHeight">--</strong></div>
+              <div title="Total estimated template cutting time across all sheaths, using the Cutting Time benchmark. Excludes travel, piercing and pauses."><span>Total estimated time</span><strong id="dimensionEstimatedTime">--</strong><strong id="dimensionArea" hidden>--</strong></div>
+            </div>
+
+          </section>
+        </section>
+        <div class="preview-grid">
+          <section class="preview-panel camera-preview" aria-label="Live camera and captured image preview">
+            <div class="preview-heading"><strong id="workspacePreviewTitle">Live Preview</strong><label class="checkbox-label live-nesting-toggle"><input id="showLiveNesting" type="checkbox" checked /> Nesting overlay</label><span class="hint">Camera / captured image</span></div>
+        <div class="viewer">
+          <img id="cameraStream" alt="Camera preview" />
+          <canvas id="overlay" tabindex="0" aria-label="Camera workspace. Press Space to start the next capture and export cycle."></canvas>
+          <div id="emptyView">Connecting to USB camera...</div>
+        </div>
+          <div class="cycle-preview-controls" aria-label="Cycle image views">
+            <button id="captureImage">Capture</button>
+            <button id="cyclePreviewLive" data-cycle-preview="live">Live camera</button>
+            <button id="cycleRefreshCamera">Refresh camera</button>
+            <button id="cyclePreviewCapture" data-cycle-preview="capture" disabled>Captured</button>
+            <button id="cyclePreviewCorrected" data-cycle-preview="corrected" disabled>Corrected</button>
+            <button id="cyclePreviewBoundary" data-cycle-preview="boundary" disabled>Boundary</button>
+            <button id="cyclePreviewMask" data-cycle-preview="mask" disabled>Mask</button>
+            <button id="cyclePreviewLayout" data-cycle-preview="layout" disabled>Full nesting preview</button>
+          </div>
+          <p id="cyclePreviewLabel" class="hint">Camera preview</p>
+          <p id="liveNestingInfo" class="hint live-nesting-info" hidden></p>
+          </section>
+        <section id="nestingPreviewCard" class="nesting-preview-card" aria-label="Latest nesting preview">
+          <div><strong>Nesting Preview</strong><p id="nestingPreviewSummary" class="hint">Last completed nesting result</p>
+            <span class="legend-heading">Piece details</span>
+            <div id="nestingPreviewLegend" class="nesting-preview-legend" aria-label="Preview piece numbers and template sizes"></div>
+            <button id="openNestingPreview" disabled>Open full nesting preview</button>
+            <p class="hint" data-role-help>The result stays here while the live camera shows the next piece.</p></div>
+          <div id="nestingPreviewEmpty" class="preview-empty">No nesting result yet.<br />Process a sheath to see its layout here.</div>
+          <canvas id="nestingPreviewCanvas" width="640" height="480" hidden aria-label="Material boundary and placed template outlines"></canvas>
+        </section>
+        </div>
+        <div class="metrics">
+          <span>Pieces <strong id="pieces">--</strong><small data-role-help>Placed in the current layout</small></span>
+          <span>Utilization <strong id="utilization">--</strong><small data-role-help>Material used by placed pieces</small></span>
+          <span>Estimate <strong id="waste">--</strong><small data-role-help>Material waste in the current nesting layout</small></span>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <section data-panel="camera" class="panel-view active">
+          <h2>Camera</h2>
+          <select id="cameraSelect"></select>
+          <div class="row">
+            <input id="widthInput" type="number" value="1280" min="160" />
+            <input id="heightInput" type="number" value="720" min="120" />
+            <input id="fpsInput" type="number" value="30" min="1" />
+          </div>
+          <button id="refreshCameras">Refresh</button>
+          <button id="openCamera">Open USB Camera</button>
+          <button id="openMachineCamera">Open USB / IMX</button>
+          <label class="file">Upload Image<input id="uploadImage" type="file" accept="image/*" /></label>
+          <label>View zoom <output id="zoomValue">1.0x</output><input id="viewZoom" type="range" min="1" max="3" step="0.1" value="1" /></label>
+          <p id="greenCropStatus" class="hint" aria-live="polite">Only the background outside the green board is hidden. Sheaths and calibration markers remain visible.</p>
+          <button id="resetZoom">Reset View</button>
+          <p class="hint" data-role-help>Zoom narrows the displayed view. Keep the whole sheath visible for detection.</p>
+          <button id="restoreCameraExposure">Enable Auto Exposure</button>
+          <p id="cameraExposureStatus" class="hint" role="status">Preview brightness adjusts to the green surface. Raw calibration and measurement images retain their original brightness.</p>
+          <div id="cameraControls"></div>
+        </section>
+
+        <section data-panel="calibration" class="panel-view">
+          <h2>Calibration</h2>
+          <div id="calibrationStatus"></div>
+          <h3>Lens correction</h3>
+          <p class="hint" data-role-help>Use a flat checkerboard. Capture 10-15 photos at different angles and positions, including near each edge, at the same resolution. Set the number of inner corner intersections, not squares. The supplied lens profile may belong to another camera.</p>
+          <label>Inner corners across<input id="boardColumns" type="number" min="2" value="9" /></label>
+          <label>Inner corners down<input id="boardRows" type="number" min="2" value="6" /></label>
+          <label>Checkerboard square size (mm)<input id="boardSquare" type="number" min="0.1" step="0.1" value="25" /></label>
+          <button id="captureCheckerboard">Capture Checkerboard Photo</button>
+          <label class="file">Upload Checkerboard Photos<input id="uploadCheckerboards" type="file" accept="image/*" multiple /></label>
+          <p id="checkerboardCount">0 checkerboard photos</p>
+          <button id="calibrateLens">Calibrate Lens</button>
+          <button id="clearCheckerboards">Clear Photo List</button>
+          <p class="hint" data-role-help>After lens calibration, capture the four markers and save working-area calibration again.</p>
+          <button id="downloadAruco">Download ArUco Marker</button>
+          <div id="arucoResult"></div>
+          <h3>Measured working area</h3>
+          <p id="calibrationMethodStatus" class="hint" aria-live="polite" data-role-help>Use this method to save your working-area dimensions and marker positions.</p>
+          <section id="calibrationSavedSummary" class="saved-workspace" aria-live="polite"></section>
+          <p class="hint" data-role-help>Enter measured marker-centre positions in millimetres. For a rectangle, enter its width and height and apply them to the rows below. For other four-corner layouts, edit each X/Y coordinate directly. All four markers must be flat on the material plane and visible in the captured photo.</p>
+          <label>Width between marker centres (mm)<input id="workspaceWidth" type="number" min="0.1" step="any" /></label>
+          <label>Height between marker centres (mm)<input id="workspaceHeight" type="number" min="0.1" step="any" /></label>
+          <button id="applyWorkspaceRectangle" type="button">Fill Rectangular Marker Positions</button>
+          <p class="hint" data-role-help>Shared marker frame: ID 12 = (0, 0), ID 11 = (-width, 0), ID 13 = (0, -height), and the opposite marker = (-width, -height). -X points toward ID 11; -Y points toward ID 13. Width and height are measured centre-to-centre distances. Save marker positions to persist the rows without a camera. Editing width/height and saving also fills the rectangular rows automatically. Photo calibration still requires all four markers.</p>
+          <label>Working-area dictionary<select id="workspaceDictionary"><option>DICT_4X4_50</option><option>DICT_4X4_100</option><option>DICT_5X5_50</option><option>DICT_6X6_50</option></select></label>
+          <div id="workspaceMarkers">
+            <div class="bed-marker"><label>Marker ID<input data-workspace="id" type="number" min="0" step="1" value="11" /></label><label>Working X mm<input data-workspace="x" type="number" step="any" value="0" /></label><label>Working Y mm<input data-workspace="y" type="number" step="any" value="0" /></label></div>
+            <div class="bed-marker"><label>Marker ID<input data-workspace="id" type="number" min="0" step="1" value="12" /></label><label>Working X mm<input data-workspace="x" type="number" step="any" /></label><label>Working Y mm<input data-workspace="y" type="number" step="any" value="0" /></label></div>
+            <div class="bed-marker"><label>Marker ID<input data-workspace="id" type="number" min="0" step="1" value="13" /></label><label>Working X mm<input data-workspace="x" type="number" step="any" /></label><label>Working Y mm<input data-workspace="y" type="number" step="any" /></label></div>
+            <div class="bed-marker"><label>Marker ID<input data-workspace="id" type="number" min="0" step="1" value="10" /></label><label>Working X mm<input data-workspace="x" type="number" step="any" value="0" /></label><label>Working Y mm<input data-workspace="y" type="number" step="any" /></label></div>
+          </div>
+          <button id="downloadBedMarkers">Generate Four Marker Images</button>
+          <div id="bedMarkerDownloads"></div>
+          <button id="saveWorkspacePositions" type="button">Save marker positions (no camera needed)</button>
+          <p id="workspaceEditStatus" class="hint" role="status" aria-live="polite"></p>
+          <button id="calibrateWorkspace">Calibrate and save from four-marker photo</button>
+          <p id="workspaceStatus" class="hint" aria-live="polite"></p>
+          <p class="hint" data-role-help>Place the whole sheath flat on the green board, clear of the markers. Auto Detect follows the full board beyond the marker centres and ignores the surrounding room and marker margins. Keep the camera, focus and resolution fixed after calibration. Verify dimensions and the boundary before nesting. The DXF origin is the template-box top-right corner; set physical laser alignment separately.</p>
+          <section id="machinePlacementPanel" class="saved-workspace">
+            <h3>Preserve photographed position on the machine</h3>
+            <p class="hint" data-role-help>After saving the working marker positions, enter the actual MACHINE X/Y at each marker centre, in mm. Machine (0,0) stays at the bed top-right: +X left, +Y down. Use the same flat working plane. These are measured positions, not values inferred from marker spacing. No second calibration photo is required for this survey.</p>
+            <div id="machinePlacementRows"></div>
+            <button id="saveMachinePlacement" type="button" disabled>Save measured machine positions</button>
+            <button id="useMachinePositionsAsLayout" type="button" disabled>Use these measurements as working marker layout</button>
+            <p class="hint" data-role-help>Use the second button when your surveyed machine positions define the marker layout, including an irregular four-corner shape. It replaces the working-marker coordinates and saves matching machine placement together. ID 12 remains working (0,0); axes stay perpendicular. Capture all four markers again before detection and nesting.</p>
+            <p id="machinePlacementStatus" class="hint" role="status" aria-live="polite">Not measured. LaserCAD opening/download is blocked until the survey is saved.</p>
+            <p class="hint" data-role-help>DXF job (0,0) stays at the template-box corner. The LaserCAD page shows its real machine position, which can be nonzero. This does not move the head, change Machine Zero or set the controller work origin. Verify the controller positioning mode and Run Box before pressing Start.</p>
+          </section>
+          <section class="saved-workspace" id="machineWorkflowPanel">
+            <h3>Datum, park and automatic job-origin cycle</h3>
+            <p class="hint" data-role-help>Sequence: Datum and verified park before capture; confirmed Download Document; move to calculated machine job corner; set and verify Key Origin; optional Run Box and verified completion; Start once. Requires measured marker positions and a commissioned controller feedback interface.</p>
+            <p id="machineWorkflowReadiness" role="status" class="hint">Not commissioned. Automatic motion and Start remain blocked; no controller SDK/status interface is installed.</p>
+            <button type="button" id="machineWorkflowPreview">Preview sequence (no machine commands)</button>
+            <ol id="machineWorkflowSteps" hidden></ol>
+          </section>
+          <button id="saveArucoScale">Save Scale From ArUco Photo</button>
+          <p id="arucoScaleHelp" class="hint" data-role-help>Capture the configured marker first and save its scale here. Then remove the marker, capture a sheath, and use Auto Detect. Keep camera position, camera mode, and the working surface unchanged.</p>
+          <p class="hint" data-role-help>Camera calibration accepts saved checkerboard image paths through the API. Scale calibration can be saved here from four clicked reference-square corners.</p>
+          <input id="squareSize" type="number" value="100" min="1" />
+          <button id="saveScale">Save 100 mm Scale From Points</button>
+          <button id="clearScalePoints">Clear Points</button>
+          <ol id="scalePoints"></ol>
+          <details id="alternativeBedCalibration" class="alternative-calibration">
+            <summary>Advanced → Alternative calibration</summary>
+            <div class="alternative-calibration-content">
+          <h3>Machine-coordinate calibration</h3>
+          <p class="hint" data-role-help>Optional alternative, not an additional setup step. Use it only when you know each marker’s actual laser-machine X/Y coordinates. Saving here replaces the current working-area calibration and resets the separate DXF alignment offsets.</p>
+          <p class="hint" data-role-help>Place four equal-size ArUco markers with different IDs around the work area, flat on the sheath plane. Enter each marker center's measured laser X/Y in mm. Marker size alone does not locate the laser origin.</p>
+          <label>Dictionary<select id="bedDictionary">
+            <option>DICT_4X4_50</option><option>DICT_4X4_100</option><option>DICT_5X5_50</option><option>DICT_6X6_50</option>
+          </select></label>
+          <div id="bedMarkers">
+            <div class="bed-marker"><label>ID<input data-bed="id" type="number" value="10" min="0" /></label><label>Laser X mm<input data-bed="x" type="number" step="0.1" /></label><label>Laser Y mm<input data-bed="y" type="number" step="0.1" /></label></div>
+            <div class="bed-marker"><label>ID<input data-bed="id" type="number" value="11" min="0" /></label><label>Laser X mm<input data-bed="x" type="number" step="0.1" /></label><label>Laser Y mm<input data-bed="y" type="number" step="0.1" /></label></div>
+            <div class="bed-marker"><label>ID<input data-bed="id" type="number" value="12" min="0" /></label><label>Laser X mm<input data-bed="x" type="number" step="0.1" /></label><label>Laser Y mm<input data-bed="y" type="number" step="0.1" /></label></div>
+            <div class="bed-marker"><label>ID<input data-bed="id" type="number" value="13" min="0" /></label><label>Laser X mm<input data-bed="x" type="number" step="0.1" /></label><label>Laser Y mm<input data-bed="y" type="number" step="0.1" /></label></div>
+          </div>
+
+          <button id="calibrateBed">Replace Calibration With Laser Bed Mapping</button>
+          <p id="bedStatus" class="hint" aria-live="polite"></p>
+          <p class="hint" data-role-help>Capture or upload all four markers before saving. Then capture the sheath and run detection and nesting again. Bed calibration replaces the saved scale and resets DXF offsets: detected geometry already uses laser coordinates. Keep the camera fixed; recalibrate after moving it.</p>
+            </div>
+          </details>
+        </section>
+
+        <section data-panel="sheath" class="panel-view">
+          <h2>Sheath</h2>
+          <button id="detectSheath">Auto Detect</button>
+          <button id="editBoundary">Edit Boundary</button>
+          <button id="acceptBoundary">Accept</button>
+          <div id="measurements"></div>
+          <p id="measurementScopeWarning" class="hint material-scope-warning" role="status" hidden></p>
+          <label><input id="showBoundary" type="checkbox" checked /> Show sheath boundary</label>
+          <label><input id="showPoints" type="checkbox" checked /> Show contour points</label>
+          <label><input id="showGrid" type="checkbox" checked /> Show grid</label>
+        </section>
+
+        <section data-panel="templates" class="panel-view">
+          <h2>Templates</h2>
+          <div class="template-tabs" role="tablist" aria-label="Template sections">
+            <button id="templateLibraryTab" role="tab" aria-selected="true" aria-controls="templateLibrary" data-template-tab="library" class="active">Library</button>
+            <button id="templatePreferencesTab" role="tab" aria-selected="false" aria-controls="templatePreferences" data-template-tab="preferences">Nesting Priority</button>
+          </div>
+          <div id="templateLibrary" role="tabpanel" aria-labelledby="templateLibraryTab">
+            <div class="template-run-summary">
+              <span class="template-eyebrow">Used for next run</span>
+              <strong id="activeTemplate" aria-live="polite">All enabled templates</strong>
+              <p id="activeTemplateDetail" class="hint">Templates are tried in your saved priority order.</p>
+            </div>
+            <div class="template-selection">
+              <label>Choose a template<select id="librarySelection"><option value="">All enabled templates</option></select></label>
+              <button id="loadTemplate" class="template-primary">Use this template</button>
+              <p id="templateSelectionHint" class="hint" aria-live="polite">Choose one template, or run all enabled sizes.</p>
+              <div class="template-toolbar">
+                <button id="editSelectedTemplate" disabled>Edit selected</button>
+                <button id="deleteTemplate" class="template-danger" disabled>Delete selected</button>
+              </div>
+            </div>
+            <div class="template-library-heading">
+              <div><h3>Saved templates</h3><span id="templateCount" class="hint">Loading library...</span></div>
+              <button id="addTemplate">+ Add template</button>
+            </div>
+            <button id="refreshTemplates" class="template-refresh">Refresh library</button>
+            <p id="templateEmpty" class="hint" hidden>No templates yet. Choose Add template to create your first size.</p>
+            <div id="templates" aria-label="Saved templates"></div>
+            <div class="template-save-bar">
+              <button id="saveTemplates">Save quantities &amp; enabled sizes</button>
+              <p class="hint" data-role-help>Changes apply to the next run. Save to keep them after restarting.</p>
+            </div>
+            <details id="templateEditor"><summary id="templateEditorTitle">Add or edit template</summary>
+            <h3 id="templateEditorHeading">Template details</h3>
+            <p class="hint" data-role-help>Add your preferred sizes. Saved sizes appear in the library and are available for nesting.</p>
+            <form id="templatePreferenceForm">
+              <label>Edit template<select id="preferredTemplate"><option value="">Add new size</option></select></label>
+              <label>Name (optional)<input id="preferredName" type="text" maxlength="100" placeholder="e.g. Small serving plate" /></label>
+              <label>Shape<select id="preferredShape"><option value="rectangle">Rectangle</option><option value="square">Square</option><option value="circle">Circle</option></select></label>
+              <label>Units<select id="preferredUnits"><option value="mm">Millimetres</option><option value="in">Inches</option></select></label>
+              <label><span id="preferredWidthLabel">Width (mm)</span><input id="preferredWidth" type="number" min="0.001" step="any" required /></label>
+              <label id="preferredHeightField"><span id="preferredHeightLabel">Height (mm)</span><input id="preferredHeight" type="number" min="0.001" step="any" required /></label>
+              <label>Quantity<input id="preferredQuantity" type="number" min="1" step="1" value="1" required /></label>
+              <label id="preferredOrientationField">Rectangle cutting direction<select id="preferredOrientation"><option value="both">Either direction (automatic)</option><option value="horizontal">Horizontal only (0 deg)</option><option value="vertical">Vertical only (90 deg)</option><option id="preferredCustomOrientation" value="custom" hidden>Keep existing custom angles</option></select>
+                <span class="hint">Horizontal: width runs left to right. Vertical: width runs top to bottom. Dimensions stay unchanged.</span></label>
+              <label id="preferredRotateField" class="checkbox-label"><input id="preferredRotate" type="checkbox" checked /> Allow 90 deg rotation</label>
+              <button id="savePreference" type="submit">Save new template</button>
+            </form>
+            </details>
+
+          </div>
+          <div id="templatePreferences" role="tabpanel" aria-labelledby="templatePreferencesTab" hidden>
+            <h3>Nesting priority</h3>
+            <p class="hint" data-role-help>First size is tried first, up to its requested quantity. Then the next size uses the remaining space. Disabled sizes are skipped.</p>
+            <div id="templatePriorityList"></div>
+            <button id="saveTemplateOrder">Save Nesting Order</button>
+          </div>
+        </section>
+
+        <section data-panel="nesting" class="panel-view">
+          <p id="nestingOrigin" class="hint" hidden><strong>Origin: ID 12 centre (0, 0) mm</strong><br /><span data-role-help>-X toward ID 11; -Y toward ID 13. Camera measurements and nesting use this origin.</span></p>
+          <p id="nestingExportOrigin" class="hint">DXF origin: top-right corner of the box around all nested templates.<span data-role-help> The yellow box is a preview guide only.</span></p>
+          <h2>Nesting</h2>
+          <label>Spacing mm<input id="spacing" type="number" value="2" min="0" step="0.5" /></label>
+          <label>Edge clearance mm<input id="edgeClearance" type="number" value="3" min="0" step="0.5" /></label>
+          <label>Rotation step<input id="rotationStep" type="number" value="5" min="1" max="90" /></label>
+          <label>Placement refinement (mm)<input id="nestingPrecision" type="number" value="0.5" min="0.1" max="5" step="0.1" /></label>
+          <select id="strategy">
+            <option value="accurate">Dense layout - search multiple directions</option>
+            <option value="common_line">Shared cut - cut common edges once</option>
+            <option value="shared_side">Spaced side packing</option>
+            <option value="maximum_pieces">Maximum pieces</option>
+            <option value="best_fit">Best fit</option>
+            <option value="first_fit">First fit</option>
+            <option value="maximum_utilization">Maximum utilization</option>
+          </select>
+          <p class="hint" data-role-help>Dense layout searches edge-aligned positions and several packing directions, preserving template priority. 0.1 mm refinement also enables fine shared-cut positioning; it can take longer. Increase quantities or enable smaller sizes to fill remaining gaps.</p>
+          <p id="sharedCutHint" class="hint" hidden data-role-help>Shared cut uses zero spacing between templates and cuts each shared straight segment once. Sheath edge clearance and cutting directions still apply. Separate sheaths stay independent.</p>
+          <button id="autoNest">Auto Nest</button>
+          <button id="deletePlacement">Delete Selected</button>
+        </section>
+
+        <section data-panel="export" class="panel-view">
+          <h2>Export</h2>
+          <h3>DXF -> laser coordinates</h3>
+          <p id="savedAlignmentStatus" class="hint" aria-live="polite"></p>
+          <p id="sharedOriginExplanation" class="hint" hidden data-role-help>Camera measurements and nesting use ID 12 centre (0, 0), with -X toward ID 11 and -Y toward ID 13. DXF export translates the top-right corner of the box around all nested templates to (0, 0), without changing size, rotation or spacing. The yellow box and origin marker are preview guides only; they are not exported as cutting paths. Set the physical laser job origin separately.</p>
+          <fieldset id="alignmentTransformFields">
+          <label class="checkbox-label"><input id="alignmentEnabled" type="checkbox" /> Apply alignment to DXF</label>
+          <label>Design reference point<select id="alignmentReference">
+            <option value="rightmost_template_top_right">Rightmost template: top-right corner (automatic)</option>
+            <option value="design_origin">Design origin (0, 0)</option>
+            <option value="min_x_min_y">Bounds: minimum X, minimum Y</option>
+            <option value="min_x_max_y">Bounds: minimum X, maximum Y</option>
+            <option value="max_x_min_y">Bounds: maximum X, minimum Y</option>
+            <option value="max_x_max_y">Bounds: maximum X, maximum Y</option>
+            <option value="center">Bounds center</option>
+            <option value="custom">Custom reference point</option>
+          </select></label>
+          <div id="alignmentCustom" hidden>
+            <label>Design X (mm)<input id="alignmentDesignX" type="number" value="0" step="0.1" /></label>
+            <label>Design Y (mm)<input id="alignmentDesignY" type="number" value="0" step="0.1" /></label>
+          </div>
+          <label>Reference at laser X (mm)<input id="alignmentLaserX" type="number" value="0" step="0.1" /></label>
+          <label>Reference at laser Y (mm)<input id="alignmentLaserY" type="number" value="0" step="0.1" /></label>
+          <label>Rotation (degrees)<input id="alignmentRotation" type="number" value="0" step="0.1" /></label>
+          <label class="checkbox-label"><input id="alignmentFlipX" type="checkbox" /> Reverse X direction</label>
+          <label class="checkbox-label"><input id="alignmentFlipY" type="checkbox" /> Reverse Y direction</label>
+          <p class="hint" data-role-help>Subtract the design reference, reverse chosen axes, rotate, then add the laser reference. Dimensions stay in mm. Positive rotation goes from +X toward +Y. Bounds references use the full layout including the sheath. The automatic template reference uses the top endpoint of the rightmost cut edge and is recalculated for every DXF.</p>
+          </fieldset>
+          <button id="previewAlignment">Preview Alignment</button>
+          <button id="saveAlignment">Save Alignment Defaults</button>
+          <canvas id="alignmentCanvas" width="340" height="240" hidden aria-label="Laser coordinate preview"></canvas>
+          <p id="alignmentSummary" class="hint" aria-live="polite"></p>
+          <p class="hint legacy-origin-help" data-role-help>Match your laser software's origin mode and import at 1:1 without automatic centering. For a head-set job origin, use laser X/Y = 0. For fixed bed coordinates, enter the measured reference position. Preview uses +Y upward. SVG uses the original design coordinates.</p>
+          <p class="hint" data-role-help>Exports contain only the placed template cut paths.</p>
+          <button id="exportSvg">Export SVG</button>
+          <button id="exportDxf">Export DXF</button>
+          <p class="hint" data-role-help>Saved DXF files open in LaserCAD automatically. The matching drawing window is activated, fitted to the view when available, and refreshed. This does not start cutting.</p>
+          <div id="exportResult"></div>
+          <p id="laserCadExportStatus" class="hint" role="status" aria-live="polite" hidden></p>
+          <section id="laserControlPanel" class="laser-control-panel" aria-labelledby="laserControlTitle">
+            <h3 id="laserControlTitle">LaserCAD machine controls</h3>
+            <p class="hint" data-role-help>Commands go through LaserCAD's visible Control Panel. Optional automatic Run Box after DXF is available in Settings → Export &amp; LaserCAD; it does not start cutting. Configure the machine connection, jog mode, speed, power and layers in LaserCAD. COM selection alone does not confirm a machine connection.</p>
+            <div class="laser-control-toolbar"><button id="openLaserCadControl" type="button">Open LaserCAD</button><button id="refreshLaserControl" type="button">Refresh status</button></div>
+            <p id="laserControlStatus" role="status" aria-live="polite">Refresh status to detect LaserCAD.</p>
+            <p id="laserControlJob" class="hint">Export a DXF before Download, Run Box or Start.</p>
+            <div class="laser-job-actions">
+              <button type="button" data-laser-action="download" disabled>Download</button>
+              <button type="button" data-laser-action="frame" disabled>Run Box</button>
+              <button type="button" data-laser-action="start" disabled>Start cutting</button>
+              <button type="button" data-laser-action="pause" disabled>Pause / Continue</button>
+              <button type="button" data-laser-action="stop" class="laser-stop" disabled>Stop</button>
+            </div>
+            <div class="laser-control-columns">
+              <div><h4>Position the head</h4><p class="hint" data-role-help>Each press sends one native LaserCAD button click. Travel follows LaserCAD's jog settings; hold-to-move is not forwarded.</p>
+                <div class="laser-jog-pad">
+                  <button type="button" data-laser-action="y_plus" disabled>Y+</button>
+                  <button type="button" data-laser-action="x_minus" disabled>X−</button>
+                  <button type="button" data-laser-action="datum" disabled>Datum</button>
+                  <button type="button" data-laser-action="x_plus" disabled>X+</button>
+                  <button type="button" data-laser-action="y_minus" disabled>Y−</button>
+                </div>
+                <div class="laser-control-toolbar"><button type="button" data-laser-action="origin" disabled>Origin</button><button type="button" data-laser-action="u_plus" disabled>U+</button><button type="button" data-laser-action="u_minus" disabled>U−</button></div>
+              </div>
+              <div><h4>LaserCAD coordinates</h4><p id="laserDisplayedPosition" class="hint">Position unavailable. Use Read Current Pos to request an update in LaserCAD.</p>
+                <button type="button" data-laser-action="read_position" disabled>Read Current Pos</button>
+                <div class="laser-coordinate-fields"><label>Target X (mm)<input id="laserTargetX" type="number" step="any" min="-100000" max="100000" /></label><label>Target Y (mm)<input id="laserTargetY" type="number" step="any" min="-100000" max="100000" /></label></div>
+                <button type="button" data-laser-action="move_to" disabled>Move to Pos</button>
+                <p class="hint" data-role-help>These are LaserCAD machine coordinates, separate from the DXF reference above. Origin and Datum invoke LaserCAD's own buttons.</p>
+              </div>
+            </div>
+            <p id="laserControlResult" role="status" aria-live="polite"></p>
+            <p class="hint" data-role-help>Stop sends LaserCAD's Stop command. Use the machine's physical emergency stop for an emergency.</p>
+          </section>
+
+        </section>
+
+        <section data-panel="cutting-time" class="panel-view">
+          <h2>Cutting Time</h2>
+          <p class="hint" data-role-help>Estimated laser cutting time for the templates in the current layout, grouped by sheath.</p>
+          <label>Seconds to cut a 100 x 100 mm square outline
+            <input id="cuttingBenchmarkSeconds" type="number" min="0.01" step="0.1" value="5" />
+          </label>
+          <p id="cuttingSpeed" class="hint" data-role-help>400 mm / 5 seconds = 80 mm/second.</p>
+          <p id="cuttingTimeStatus" class="hint" role="status" aria-live="polite">Process a sheath or run nesting to estimate cutting time.</p>
+          <div class="production-table-wrap">
+            <table class="production-table">
+              <thead><tr><th scope="col">Sheath</th><th scope="col">Templates</th><th scope="col">Cut length</th><th scope="col">Estimated time</th></tr></thead>
+              <tbody id="cuttingTimeRows"></tbody>
+              <tfoot id="cuttingTimeTotal"></tfoot>
+            </table>
+          </div>
+          <p class="hint" data-role-help>Time = total template outline length / cutting speed. Uses placed outlines in millimetres, not template area. Excludes travel, piercing, acceleration and pauses. Shared edges are counted for each template, so common-line cutting may take less time. The sheath boundary is excluded.</p>
+        </section>
+        <section data-panel="settings" class="panel-view">
+          <h2>Settings</h2>
+          <p class="settings-intro" data-role-help>Set up your camera and default cutting preferences. All dimensions are in millimetres.</p>
+          <section id="settingsActiveCalibration" class="saved-workspace" aria-live="polite"></section>
+          <form id="settingsForm">
+            <div id="settingsSections" class="settings-grid"></div>
+            <details class="settings-advanced" id="settingsAdvanced">
+              <summary>Advanced configuration (JSON)</summary>
+              <p class="hint" data-role-help>For additional options. Apply your JSON changes to the form before saving.</p>
+              <textarea id="configEditor" spellcheck="false" aria-label="Advanced configuration JSON"></textarea>
+              <button id="applyConfigJson" type="button">Apply JSON to form</button>
+            </details>
+            <div class="settings-actions">
+              <p id="settingsStatus" role="status" aria-live="polite">Loading settings…</p>
+              <button id="saveConfig" type="submit" disabled>Save settings</button>
+            </div>
+          </form>
+        </section>
+
+        <section data-panel="data" class="panel-view">
+          <h2>Data</h2><p class="hint" data-role-help>Daily production overview, cycle records and CSV downloads.</p>
+          <div class="production-toolbar"><label for="productionDate">Production date <select id="productionDate" disabled></select></label><button id="refreshProduction">Refresh production</button><a id="productionExcelDownload" hidden download>Download Excel report</a><a id="productionDownload" hidden download>Download original CSV</a></div>
+          <p id="productionStatus" class="hint" role="status" aria-live="polite">Select Data to load production.</p>
+          <div id="productionMetrics" class="production-metrics"></div>
+          <div class="production-breakdown"><h3>Pieces by template</h3><div id="productionTemplates" class="hint">No production loaded.</div></div>
+          <h3>Exported cycles</h3><div class="production-table-wrap"><table class="production-table"><thead><tr><th scope="col">Time (IST)</th><th scope="col">Cycle</th><th scope="col">Sheaths</th><th scope="col">Pieces</th><th scope="col">Utilization</th><th scope="col">Waste</th><th scope="col">Duration</th><th scope="col">Format</th></tr></thead><tbody id="productionCycles"></tbody></table></div>
+          <h3>Current measurement</h3><div id="dataMeasurements" class="hint">No piece measured yet.</div>
+          <h3>Latest export</h3><div id="dataExport" class="hint">No exported file available.</div>
+          <h3>Daily production CSV</h3><p class="hint" data-role-help>One row per exported automatic cycle, grouped by date in Asia/Kolkata. Files are saved in data/production/. Physical cutting completion is not monitored.</p>
+          <div id="dailyProductionReports" class="hint">Open Data to view daily production files.</div>
+          <button id="retryDailyProduction" hidden>Retry daily record</button>
+          <button id="recoverDailyProduction">Recover daily records from saved exports</button>
+          <h3>Saved projects</h3><button id="saveProject">Save Project</button><button id="refreshData">Refresh saved projects</button>
+          <div id="dataProjects" class="hint" role="status">Open Data to view saved projects.</div>
+        </section>
+        <section class="panel-view" data-panel="lasercad" id="laserCadTab">
+          <div class="lasercad-toolbar" aria-label="LaserCAD view controls">
+            <button type="button" data-theme-toggle aria-label="Switch to light mode">Light mode</button>
+            <button id="laserCadTabBack" type="button">Back to Process</button>
+            <button id="laserCadTabOpen" type="button">Open drawing</button>
+            <button id="laserCadTabRetry" type="button">Retry display</button>
+            <button id="laserCadTabDetach" type="button">Show separately</button>
+            <button id="machineWorkflowCheck" type="button">Check machine workflow</button>
+            <button id="laserCadTabControls" type="button" hidden disabled>Laser Control (disabled)</button>
+            <span id="laserCadTabStatus" role="status" aria-live="polite">Export a DXF to open the current drawing here.</span>
+            <span id="laserCadOriginIndicator" hidden role="note" aria-label="App export reference: DXF origin (0, 0), template-box top-right. Display only; not a cutting entity or machine position." title="For DXFs exported by this app: (0, 0) is the top-right of the template bounding box. This indicator is display only, outside the drawing; it is not exported or cut and does not show the machine position. The local job origin is not the machine origin. A measured marker-to-machine survey places the import copy at the photographed bed position."><span class="origin-indicator-dot" aria-hidden="true"></span><strong>DXF (0, 0)</strong><span class="origin-indicator-detail"> · box top-right · display only</span></span>
+          </div>
+          <details class="application-info" id="applicationInfo">
+            <summary>App <span data-app-version>v2026.11.17.4</span> · Installation details</summary>
+            <p id="applicationBuild">Loading application details…</p>
+            <dl>
+              <dt>Running app</dt><dd id="applicationPath">Checking…</dd>
+              <dt>LaserCAD selected</dt><dd id="laserCadSelectedPath">Checking…</dd>
+              <dt>LaserCAD running</dt><dd id="laserCadRunningPath">Checking…</dd>
+            </dl>
+            <p id="laserCadPathStatus" role="status"></p>
+          </details>
+          <details class="application-info operator-recording" id="operatorRecordingPanel">
+            <summary id="operatorRecordingSummary">Operator recording: off</summary>
+            <p data-role-help>Records visible LaserCAD information every 2 seconds. Operate the machine in LaserCAD; use Record event to label your actions. These controls send no machine commands.</p>
+            <p class="hint" data-role-help>For a purely manual test, disable automatic Download and both automatic Run Box options in Settings before exporting. Recording does not change those settings.</p>
+            <div class="recording-row">
+              <label>Controller Origin Mode (your observation)
+                <select id="operatorRecordingOrigin"><option value="unknown">Not checked</option><option value="key_origin">Key Origin</option><option value="machine_zero">Machine Zero As Origin</option><option value="current_position">Current Position</option><option value="soft_origin">Soft Origin</option></select>
+              </label>
+              <label>Controller firmware (optional)<input id="operatorRecordingFirmware" maxlength="100" /></label>
+              <button id="operatorRecordingStart" type="button">Start recording</button>
+              <button id="operatorRecordingStop" type="button" disabled>Stop recording</button>
+            </div>
+            <div class="recording-row">
+              <label>Event (operator-reported)<select id="operatorRecordingAction">
+                <option value="note">Note</option><option value="datum_pressed">I pressed Datum</option>
+                <option value="homing_observed_complete">I observed homing finished</option>
+                <option value="read_position_pressed">I pressed Read Current Pos</option>
+                <option value="move_pressed">I requested a position move</option><option value="arrival_observed">I observed arrival</option>
+                <option value="origin_pressed">I pressed Origin</option><option value="download_pressed">I requested Download Document</option>
+                <option value="download_success_observed">I saw transfer success</option><option value="run_box_pressed">I pressed Run Box</option>
+                <option value="framing_observed_complete">I observed framing finished</option><option value="start_pressed">I pressed Start</option>
+                <option value="pause_pressed">I pressed Pause</option><option value="resume_pressed">I pressed Resume</option><option value="stop_pressed">I pressed machine Stop</option>
+                <option value="cutting_observed_complete">I observed cutting finished</option><option value="alarm_observed">I observed an alarm</option>
+              </select></label>
+              <label>Observed X (mm)<input id="operatorRecordingX" type="number" step="any" /></label>
+              <label>Observed Y (mm)<input id="operatorRecordingY" type="number" step="any" /></label>
+              <label class="recording-note">Notes / exact message<input id="operatorRecordingNotes" maxlength="2000" /></label>
+              <button id="operatorRecordingEvent" type="button" disabled>Record event</button>
+            </div>
+            <div class="recording-row">
+              <label>Saved session<select id="operatorRecordingSessions"><option value="">No recordings yet</option></select></label>
+              <a id="operatorRecordingDownload" hidden download>Download logs ZIP</a>
+            </div>
+            <p id="operatorRecordingStatus" role="status" aria-live="polite">Off. Stop recording does not stop the machine. Recordings stop after one hour.</p>
+            <p id="operatorRecordingFolder" class="hint"></p>
+          </details>
+          <div id="laserCadNativeSlot"><p id="laserCadNativeHint" data-role-help>The complete LaserCAD application appears here, including its drawing and native control panel. Export a DXF or choose Open drawing.</p></div>
+        </section>
+        <section class="panel-view" data-panel="laser-control" id="laserControlDashboard" aria-label="SIL Laser Control">
+          <div class="lc-heading"><div><p class="lc-eyebrow">TROCEN AWC7813 CON</p><h2>Laser Control</h2><p class="hint" data-role-help>Prepare the job, review the process, and track the handoff.</p></div><button id="lcRefresh" type="button">Refresh dashboard</button></div>
+          <div class="lc-banner" role="status"><strong>Direct control awaits commissioning</strong><p id="lcBlocker">The controller protocol and safety feedback must be verified before direct commands can be enabled.</p></div>
+          <p id="lcMessage" role="status" aria-live="polite"></p>
+          <section class="lc-supervised" aria-label="Supervised cutting cycle">
+            <div class="lc-card-heading"><h3>Supervised cutting cycle</h3><span id="lcCycleState" class="lc-badge">Load sheath</span></div>
+            <p id="lcCycleHelp" class="hint" role="status">Load a sheath, then confirm it is ready for capture.</p>
+            <ol class="lc-cycle-steps"><li>Load sheath</li><li>Capture &amp; nest</li><li>Review LaserCAD &amp; download</li><li>Confirm Start</li><li>Confirm cutting completed</li></ol>
+            <div class="lc-actions"><button id="lcCycleReady" type="button">Sheath loaded — Prepare job</button><button id="lcCycleReview" type="button" disabled>Reviewed and downloaded — Ready to Start</button><button id="lcCycleComplete" type="button" disabled>Cut finished and machine stopped — Record completion</button><button id="lcCycleAbort" type="button" disabled>Machine stopped — Abort cycle</button></div>
+            <p class="hint" data-role-help>Review and download the correct job in LaserCAD. Confirm actual speed, power, passes, layers, origin and machine selection there. Each labelled button is your operator confirmation; there are no popup approvals. Start sends a request immediately. Completion means you observed cutting finished and the machine stopped; it is operator-reported; no next capture starts automatically.</p>
+            <details><summary>Recent supervised cycles</summary><div class="lc-table-wrap"><table><thead><tr><th>DXF / cycle</th><th>Stage</th><th>Start requested</th><th>Operator confirmed end</th></tr></thead><tbody id="lcCycles"></tbody></table></div></details>
+          </section>
+          <div id="lcJobTools" class="lc-actions" aria-label="Job operations">
+            <a id="lcDownload" download hidden>Download DXF</a>
+            <button id="lcValidate" type="button" data-lc-permission="operate">Revalidate job</button>
+            <button type="button" data-lc-fallback-action="download" disabled>Download job via LaserCAD</button>
+            <button type="button" data-lc-fallback-action="frame" disabled>Run Box via LaserCAD</button>
+            <button type="button" data-lc-fallback-action="start" class="lc-start-now" title="Sends Start immediately when enabled. No popup approval." disabled>Start cutting now (LaserCAD)</button>
+            <label class="lc-observed">Observed machine state<select id="lcObservedState"><option value="">Observe and select</option><option value="running">Running</option><option value="paused">Paused</option></select></label>
+            <button type="button" data-lc-fallback-action="pause" disabled>Pause (toggle)</button>
+            <button type="button" data-lc-fallback-action="resume" disabled>Resume (toggle)</button>
+            <button id="lcSplit" type="button" disabled>Split screen</button>
+            <button id="lcRestore" type="button" disabled>Restore windows</button>
+            <button type="button" data-lc-fallback-action="stop" disabled>Stop via LaserCAD</button>
+            <span id="lcJobControlStatus" class="hint">Open the matching DXF in LaserCAD to use its job controls.</span>
+            <span id="lcLayoutStatus" class="hint">Automatic split after DXF export is on.</span>
+          </div>
+          <div class="lc-grid">
+            <section class="lc-card lc-job"><div class="lc-card-heading"><h3>Cutting job</h3><span id="lcJobState" class="lc-badge">No job</span></div><h4 id="lcFilename">Waiting for a DXF</h4><p id="lcJobInfo" class="hint">Generated DXFs arrive automatically after export.</p><canvas id="lcPreview" aria-label="Cutting layout preview"></canvas><div id="lcValidation" role="status"></div><form id="lcUploadForm"><label>Select another DXF<input id="lcUploadFile" type="file" accept=".dxf" required /></label><button type="submit" data-lc-permission="operate">Import DXF</button></form></section>
+            <section class="lc-card"><h3>Cutting parameters</h3><p class="hint" data-role-help>Enter settings tested for this material. Values are a job draft until a verified encoder applies them.</p><form id="lcParametersForm"><div class="lc-fields"><label>Material<input id="lcMaterial" maxlength="120" required value="Areca sheath" /></label><label>Thickness (mm)<input id="lcThickness" type="number" min="0.01" step="any" value="2.5" required /></label><label>Speed (mm/s)<input id="lcSpeed" type="number" min="0.001" step="any" /></label><label>Maximum power (%)<input id="lcMaxPower" type="number" min="0" max="100" step="any" /></label><label>Minimum power (%)<input id="lcMinPower" type="number" min="0" max="100" step="any" /></label><label>Passes<input id="lcPasses" type="number" min="1" max="100" step="1" value="1" required /></label></div><p class="hint" data-role-help>Blank layer values inherit the job defaults. Minimum-power and pass encoding remain unverified.</p><div class="lc-table-wrap"><table><thead><tr><th>Cut</th><th>Layer</th><th>mm/s</th><th>Max %</th><th>Min %</th><th>Passes</th></tr></thead><tbody id="lcLayers"></tbody></table></div><button type="submit" data-lc-permission="operate">Save job parameters</button><button id="lcDiscardDraft" type="button" disabled>Discard draft</button></form><div class="lc-profiles"><label>Material profile<select id="lcProfiles"><option value="">Choose a saved profile</option></select></label><button id="lcLoadProfile" type="button" data-lc-permission="operate">Load into draft</button><label>Profile name<input id="lcProfileName" maxlength="100" /></label><button id="lcSaveProfile" type="button" data-lc-permission="configure">Save material profile</button></div></section>
+            <section class="lc-card"><h3>Controller connection</h3><dl class="lc-facts"><dt>Controller</dt><dd>Trocen AWC7813 CON</dd><dt>Transport</dt><dd>Ethernet / IP</dd><dt>Address</dt><dd id="lcAddress">192.168.8.8</dd><dt>Port / firmware</dt><dd>Not verified</dd><dt>Connection</dt><dd id="lcConnection">Unverified</dd><dt>Readiness</dt><dd>Unverified</dd></dl><form id="lcAddressForm"><label>Controller IPv4 address<input id="lcIp" value="192.168.8.8" required /></label><button type="submit" data-lc-permission="configure">Save address</button></form><div class="lc-actions"><button data-lc-command="connect" disabled>Connect</button><button data-lc-command="disconnect" disabled>Disconnect</button></div><p class="hint" data-role-help>Saving an address does not establish connectivity. No port scanning or guessed packets are sent.</p></section>
+            <section class="lc-card"><h3>Preparation and machine controls</h3><button id="lcPrepare" type="button" data-lc-permission="operate">Validate and freeze job draft</button><p id="lcPreparation" class="hint">No controller-compatible job has been generated.</p><div class="lc-actions"><button data-lc-command="transfer" disabled>Direct Transfer job</button><button data-lc-command="start" disabled>Direct Start</button><button data-lc-command="pause" disabled>Direct Pause</button><button data-lc-command="resume" disabled>Direct Resume</button><button data-lc-command="stop" disabled>Direct Stop</button></div><p class="hint" data-role-help>Direct commands remain disabled until the vendor contract and required safety conditions are verified. Software Stop is not an emergency stop.</p><div class="lc-fallback"><h4>LaserCAD fallback</h4><button id="lcFallback" type="button" data-lc-permission="operate">Open this DXF in LaserCAD</button><button id="lcLegacyControls" type="button">Existing LaserCAD controls</button><p class="hint" data-role-help>DXF handoff only. Dashboard speed, power, passes and layer settings are not applied automatically to LaserCAD. Review them there. Opening a file does not start cutting.</p></div></section>
+            <section class="lc-card"><h3>Live monitoring</h3><p class="hint" data-role-help>Controller telemetry is unavailable. Preparation events are not machine feedback.</p><dl class="lc-facts"><dt>Machine current job</dt><dd>Unavailable</dd><dt>Cutting progress</dt><dd>Unavailable</dd><dt>Elapsed / remaining time</dt><dd>Unavailable</dd><dt>Alarms / faults</dt><dd>Unavailable</dd><dt>Last controller response</dt><dd>Unavailable</dd></dl></section>
+            <section class="lc-card"><h3>Safety interlocks</h3><p class="hint" data-role-help>Live states are unavailable for emergency stop, water flow, door, exhaust, laser protection and limits. Existing manufacturer protections remain in control.</p><div class="lc-badge">Interlock telemetry unavailable</div><p class="hint" data-role-help>No checkbox or saved profile is treated as proof of a safe machine state.</p></section>
+            <section class="lc-card lc-history"><div class="lc-card-heading"><h3>Job history</h3><span class="hint">Preparation and execution remain separate</span></div><div class="lc-table-wrap"><table><thead><tr><th>DXF / material</th><th>State</th><th>Received</th><th>Started</th><th>Completed / duration</th><th>Review</th></tr></thead><tbody id="lcHistory"></tbody></table></div><details><summary>Selected job events</summary><div id="lcEvents" class="hint">Select a job to inspect its events.</div></details></section>
+          </div>
+        </section>
+      </aside>
+    </main>
+    <div id="messages" class="notification-area" aria-live="polite"></div>
+    <script src="/static/role-presentation.js?v=20261115-role-ui"></script>
+    <script src="/static/app.js?v=20261117-4"></script>
+    <script src="/static/space-cycle.js?v=20261117-4"></script>
+    <script src="/static/manual-datum.js?v=20261117-4"></script>
+    <script src="/static/machine-placement.js?v=20261113-surveyed-layout"></script>
+    <script src="/static/machine-workflow.js?v=20261113-verified-cycle"></script>
+    <script src="/static/lasercad-tab.js?v=20261117-4"></script>
+    <script src="/static/operator-recording.js?v=20261114-recording"></script>
+    <script src="/static/laser-control.js?v=20261112-disabled"></script>
+  </body>
+</html>
