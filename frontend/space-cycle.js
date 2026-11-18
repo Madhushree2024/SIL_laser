@@ -1,7 +1,7 @@
 /* Operator-paced sequence; every press authorizes exactly one stage. */
 (() => {
   let current = null, pending = false, pollPending = false, held = new Set(), preparingCamera = false;
-  let completionRecovery = null, statusEpoch = 0;
+  let completionRecovery = null, startReturnRecovery = null, statusEpoch = 0;
   const endpoint = '/api/laser-control/space-cycle';
   const labels = {ready_process:'Space 1: Refresh camera → Capture → Download Document',
     processing:'Space 1: Processing — wait',
@@ -29,7 +29,7 @@
     bar.hidden=!allowed || (!laser && !process);
     title.textContent=completionRecovery ? completionRecovery.message : preparingCamera ? 'Space 1: Refreshing camera — wait' : labels[current?.stage] || 'Loading Space workflow…';
     note.textContent=completionRecovery ? completionRecovery.message : preparingCamera ? 'Reconnecting the camera before capture. Please wait.' : current?.message || 'Press Space to refresh the camera, capture and process through Download Document.';
-    next.textContent=completionRecovery ? (completionRecovery.committed ? 'Return to Process Sheath' : 'Retry completion') : current?.next_action || 'Wait';next.disabled=pending || (!completionRecovery && !current?.next_action);
+    next.textContent=startReturnRecovery ? 'Return to Process Sheath / check Start status' : completionRecovery ? (completionRecovery.committed ? 'Return to Process Sheath' : 'Retry completion') : current?.next_action || 'Wait';next.disabled=pending || (!startReturnRecovery && !completionRecovery && !current?.next_action);
     const reference=$('automaticWorkflow');
     if(reference) { reference.hidden=!allowed;reference.textContent='Automatic workflow';reference.title=labels[current?.stage] || 'Show automatic workflow status'; }
     done.hidden=!['awaiting_completion','awaiting_manual_completion'].includes(current?.stage);reset.hidden=current?.stage!=='interrupted';
@@ -46,6 +46,7 @@
     finally{pollPending=false;}
   }
   async function advance() {
+    if(startReturnRecovery){await resumeStartReturn();return;}
     if(pending || !current?.next_action || !hasPermission('operate'))return;
     if(state.workflowBusy || state.pendingMutations || state.cameraRefreshing) {
       const text='Another operation is active. Wait for it to finish, then press Space again. No stage was triggered.';
@@ -70,10 +71,33 @@
       } else {
         // Expose the native tab so a newly launched LaserCAD can be hosted.
         navigateSection('lasercad');
+        startReturnRecovery={snapshot,clickAttempted:false,confirmedBySpace:true};
+        ++statusEpoch;
         current=await api(endpoint+'/action',{method:'POST',body:JSON.stringify({cycle_id:snapshot.cycle_id,revision:snapshot.revision,expected_stage:snapshot.stage,request_id:crypto.randomUUID()})});
+        await completeStartReturn();
       }
-    }catch(e){message(displayError(e),true);}
+    }catch(e){
+      if(startReturnRecovery){try{await completeStartReturn(true);}catch(recoveryError){message(displayError(recoveryError),true);}}
+      else message(displayError(e),true);
+    }
     finally{preparingCamera=false;pending=false;await refresh();}
+  }
+  async function completeStartReturn(checkStatus = false) {
+    const recovery=startReturnRecovery;if(!recovery)return;
+    if(checkStatus)await completionStatus();
+    const receipt=current?.started_from;
+    if(current?.stage!=='ready_process' || current.job!==null ||
+        receipt?.cycle_id!==recovery.snapshot.cycle_id || receipt.revision!==recovery.snapshot.revision)
+      throw new Error('Start status could not be verified. No Start was retried. Inspect the machine and check workflow status.');
+    await returnToProcess(recovery);
+    startReturnRecovery=null;++statusEpoch;render();
+  }
+  async function resumeStartReturn() {
+    if(pending || !hasPermission('operate'))return;
+    pending=true;render();
+    try{await completeStartReturn(true);}
+    catch(error){message(displayError(error),true);}
+    finally{pending=false;await refresh();}
   }
   function resetMatches(status, recovery) {
     const receipt=status?.reset_from, original=recovery.snapshot;
@@ -106,7 +130,7 @@
     // Reuse the existing navigator only if the one button activation failed.
     // Never click/dispatch the Process Sheath handler a second time.
     if(!processScreenReady())navigateSection('process');
-    if(!processScreenReady())throw new Error('Cycle reset is saved, but Process Sheath did not open. Press Space to retry navigation only.');
+    if(!processScreenReady())throw new Error('Process Sheath did not open. Press Space to retry navigation only.');
     render();
     if(recovery.confirmedBySpace)$('overlay')?.focus({preventScroll:true});
   }
@@ -167,6 +191,7 @@
     return code==='Space' && ['ready_process','ready_start'].includes(current?.stage);
   }
   function press(code) {
+    if(code==='Space' && startReturnRecovery){void resumeStartReturn();return;}
     if(code==='Space' && completionRecovery){void resumeCompletion();return;}
     if(completionKey(code) && ['awaiting_completion','awaiting_manual_completion'].includes(current?.stage))void finish(true,{confirmedBySpace:true});
     else if(accepts(code))void advance();
@@ -204,7 +229,7 @@
     }
   });
   $('automaticWorkflow')?.addEventListener('click',()=>{navigateSection('process');render();});
-  next.addEventListener('click',()=>void (completionRecovery ? resumeCompletion() : advance()));done.addEventListener('click',()=>void finish(true));reset.addEventListener('click',()=>void finish(false));
+  next.addEventListener('click',()=>void (startReturnRecovery ? resumeStartReturn() : completionRecovery ? resumeCompletion() : advance()));done.addEventListener('click',()=>void finish(true));reset.addEventListener('click',()=>void finish(false));
   async function nativeComplete(snapshot) {
     // A native completion edge is pinned to its cycle/revision. It cannot call
     // advance(), even if polling or a delayed callback sees a different stage.

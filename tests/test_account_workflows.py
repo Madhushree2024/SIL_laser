@@ -82,8 +82,9 @@ def test_assigned_first_space_runs_real_processing_and_uses_server_mode_not_payl
   monkeypatch.setattr(native,'prepare_job_panel',lambda *a:{})
   response=client.post('/api/laser-control/space-cycle/action',json={'cycle_id':current['cycle_id'],'revision':current['revision'],'expected_stage':'ready_start','request_id':str(uuid4())})
   assert response.status_code==200,response.text
-  assert calls==['start'] and response.json()['stage']=='awaiting_completion'
+  assert calls==['start'] and response.json()['stage']=='ready_process'
+  assert response.json()['physical_completion_verified'] is False
   current=response.json()
   response=client.post('/api/laser-control/space-cycle/reset',json={'cycle_id':current['cycle_id'],'revision':current['revision'],'completed':True,'operator_confirmed_idle':True})
-  assert response.status_code==200 and response.json()['stage']=='ready_process'
-  assert calls==['start'],'Reset must not send another machine command'
+  assert response.status_code==409
+  assert calls==['start'],'No completion/reset or repeated machine command is required'

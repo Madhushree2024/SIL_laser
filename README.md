@@ -2,11 +2,11 @@
 
 Camera-based sheath measurement, template nesting, DXF export and embedded LaserCAD automation for the SIL / Trocen AWC7813 workflow.
 
-Current release: **v2026.11.18.2**.
+Current release: **v2026.11.18.3**.
 
 ## Install the desktop application
 
-Open [Releases](https://github.com/Madhushree2024/SIL_laser/releases/latest) and download **TemplateCutting-Setup-With-Python-2026.11.18.2.zip**. Download the installer asset, rather than GitHub's automatically generated Source code ZIP.
+Open [Releases](https://github.com/Madhushree2024/SIL_laser/releases/latest) and download **TemplateCutting-Setup-With-Python-2026.11.18.3.zip**. Download the installer asset, rather than GitHub's automatically generated Source code ZIP.
 
 1. Wait until the machine is idle, then close Template Cutting and LaserCAD normally.
 2. Extract the entire installer ZIP into a new folder.
@@ -22,12 +22,12 @@ In Automated mode:
 
 1. First fresh **Space**: camera refresh, capture, lens correction, four-marker perspective, outline detection, nesting, DXF export, embedded LaserCAD, configured USB selection, red-layer parameters, Download and Download Document.
 2. Second fresh **Space**: operator authorizes **Start**.
-3. After cutting has physically finished and the machine is idle, third fresh **Space**: acknowledges completion, resets the app cycle and opens **Process Sheath**. It does not send Start or capture again.
-4. Next fresh **Space**: refreshes the camera for the next sheath.
+3. Immediately after the Start request, the app returns to the existing **Process Sheath** screen and rearms the UI. It does not declare cutting complete or the machine idle, and does not capture again. No third-Space completion is required.
+4. After cutting has physically stopped and the machine is idle, the next fresh **Space** refreshes the camera for the next sheath.
 
 Manual mode stops automation after Download Document. The remaining machine actions are manual; a fresh Space after cutting acknowledges completion and resets. Admin assigns other users' workflow modes in Account. Datum is a separate manual button and is not part of this key sequence.
 
-The app does not infer physical cutting completion from controller telemetry. Download Document submission is not a verified transfer-success message. v2026.11.18.2 passed 166 focused software tests. Actual Windows x64 API declarations, hidden test controls, and pass-through hook installation/removal were validated. Keyboard events for the workflow were simulated; connected LaserCAD/cutting validation remains necessary.
+The app does not infer physical cutting completion from controller telemetry. Download Document submission is not a verified transfer-success message. v2026.11.18.3 passed 173 focused software tests. Actual Windows x64 API declarations, hidden test controls, and pass-through hook installation/removal were validated. Keyboard events for the workflow were simulated; connected LaserCAD/cutting validation remains necessary.
 
 ## Git pull and download behavior
 
@@ -68,10 +68,12 @@ Usable travel: **915 × 630 mm**. Cutting defaults: **90 mm/s**, **10% power**, 
 The four surveyed markers define camera measurements with ID 12 centre as the working reference. The nested template bounding box defines the separate local DXF job origin. Saved marker-to-machine calibration supplies photographed machine placement. Export and LaserCAD import coordinates are separate transformations; correct controller positioning mode still matters.
 
 
-## Completion reliability in v2026.11.18.2
+## Completion reliability in v2026.11.18.3
 
 A committed reset includes a durable receipt identifying the completed cycle and its revision. If the reset response is lost, the UI reads backend status before deciding whether another reset is needed. It never replays an already-committed reset. Process Sheath is clicked at most once for that completion; the existing navigator recovers a failed navigation without creating another handler. A pending recovery cannot Start or capture. A later fresh Space begins the normal camera-refresh workflow only after recovery completes.
 
 Reset publishes `ready_process` in memory only after the candidate has been durably saved. Failed saves retain the previous cycle, and uncertain storage outcomes block further reset attempts until storage access and the saved record can be verified. The event journal and cycle ID/revision checks are retained. First-Space processing and second-Space Start implementations are unchanged.
 
 Remote-injected Space is now consumed only for completion, including its repeats and release. A held second press cannot confirm completion. The mouse completion button retains its confirmation dialog. Actual remote-control software with connected LaserCAD has not yet been validated.
+
+Post-Start return uses a persisted started_from receipt rather than the completion reset endpoint. A lost response is reconciled from status without resending Start. Navigation recovery reuses the existing Process Sheath button/navigator and never sends Start or captures. Manual mode and interrupted-cycle idle recovery remain unchanged. Machine settings are not changed by this update.

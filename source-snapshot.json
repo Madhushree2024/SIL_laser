@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.18.2",
+  "version": "2026.11.18.3",
   "original_source": "C:\\SIL-Laser-Automation\\Project",
   "repository_copy": "C:\\SIL-Laser-Automation\\Repository",
-  "application_logic_changes": "Remote-injected completion key reliability; first processing and second Start unchanged",
+  "application_logic_changes": "Two-Space flow: existing capture-to-download and Start, then immediate home return; no physical completion assertion",
   "repository_config_difference": "LaserCAD executable blank for portability",
   "workspace_data_excluded": true
 }

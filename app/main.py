@@ -1594,8 +1594,7 @@ def space_cycle_action(payload: SpaceAction):
         action='start'
         guard()
         result=lasercad_controller.request(action,job_scoped=True,confirm_start=action=='start',expected_panel=expected)
-        return space_cycle.finish('start_pending','awaiting_completion',last_request=result,
-            message='Start requested. Wait until cutting has finished and the machine is idle, then press Space once to confirm completion and reset for the next sheath. No additional confirmation dialog will open.')
+        return space_cycle.return_after_start(result)
     except Exception as exc:
         if claimed:space_cycle.interrupt(str(exc)+' No automatic retry; inspect the machine before recovery.')
         raise HTTPException(409,str(exc)) from exc

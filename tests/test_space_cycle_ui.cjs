@@ -3,28 +3,29 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../frontend/space-cycle.js'),'utf8');
 function harness(options={}){
+ const returnAfterStart=options.returnAfterStart;
  const nodes=new Map(),keys={};
  function node(){const attrs={},classes=new Set();return {hidden:false,dataset:{},children:[],listeners:{},classList:{contains:k=>classes.has(k),toggle(k,on){if(on)classes.add(k);else classes.delete(k);}},setAttribute(k,v){attrs[k]=String(v);},getAttribute:k=>attrs[k]??null,append(...items){this.children.push(...items);for(const i of items)i.parentNode=this;},prepend(item){item.parentNode=this;this.children.unshift(item);},addEventListener(k,f){this.listeners[k]=f;},click(){if(!this.disabled){this.onclick?.();this.listeners.click?.();}},focus(){context.document.activeElement=this;}};}
  const get=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);};
  const process=node(),state={user:{},activeView:'process',pendingMutations:0},calls=[],events=[];
  let cameraCount=0;const confirmations=[];
  get('processSheath').textContent='Process Sheath';
- let stage=options.stage || 'ready_process',revision=0,cycleId='cycle',resetReceipt=null;
- const status=()=>({stage,cycle_id:cycleId,revision,job:stage==='ready_process'?null:{path:'job.dxf'},reset_from:resetReceipt,next_action:stage.startsWith('ready_')?'advance':null,message:stage});
+ let stage=options.stage || 'ready_process',revision=0,cycleId='cycle',resetReceipt=null,startedReceipt=null;
+ const status=()=>({stage,cycle_id:cycleId,revision,job:stage==='ready_process'?null:{path:'job.dxf'},reset_from:resetReceipt,started_from:startedReceipt,next_action:stage.startsWith('ready_')?'advance':null,message:stage});
  const context={console,state,displayError:error=>error?.message || String(error),$:get,document:{body:{dataset:{screen:'process'}},hidden:false,hasFocus:()=>true,createElement:node,querySelector:()=>process,addEventListener(k,f){keys[k]=f;}},window:{addEventListener(){},LaserCADTab:{hide:async()=>{events.push('hide');if(options.hide)await options.hide();}}},hasPermission:()=>options.permission!==false,crypto:{randomUUID:()=>String(Math.random())},confirm:text=>{confirmations.push(text);return options.confirm!==false},setInterval(fn){context.pollTick=fn;},setTimeout,Date,message(text){events.push('message:'+text);},navigateSection:view=>{state.activeView=view;context.document.body.dataset.screen=view;get('processSheath').setAttribute('aria-pressed',String(view==='process'));get('laserCadTab').classList.toggle('active',view==='lasercad');events.push('view:'+view);},
  refreshCamera:async settings=>{assert.equal(settings.required,true);cameraCount++;events.push('refresh_camera');if(options.camera)await options.camera();return options.refreshResult===false ? false : true;},
- api:async(url,options)=>{if(!options?.method)return status();const data=JSON.parse(options.body);calls.push([url,data]);assert.equal(data.revision,revision);revision++;if(url.endsWith('/reset')){resetReceipt={cycle_id:data.cycle_id,revision:data.revision,completed:data.completed,operator_confirmed_idle:data.operator_confirmed_idle};stage='ready_process';cycleId='cycle-'+revision;}else stage={ready_start:'awaiting_completion'}[stage];return status();},
+ api:async(url,options)=>{if(!options?.method)return status();const data=JSON.parse(options.body);calls.push([url,data]);assert.equal(data.revision,revision);revision++;if(url.endsWith('/reset')){resetReceipt={cycle_id:data.cycle_id,revision:data.revision,completed:data.completed,operator_confirmed_idle:data.operator_confirmed_idle};stage='ready_process';cycleId='cycle-'+revision;}else if(returnAfterStart){startedReceipt={cycle_id:data.cycle_id,revision:data.revision};stage='ready_process';cycleId='started-'+revision;}else stage={ready_start:'awaiting_completion'}[stage];return status();},
  runWorkflow:async s=>{assert.equal(s.stage,'ready_process');calls.push(['process',s]);events.push('process');if(options.process)await options.process();stage=options.mode==='manual'?'awaiting_manual_completion':'ready_start';revision++;},};
  get('processSheath').onclick=()=>{events.push('click:processSheath');context.navigateSection('process');};
  vm.runInNewContext(source,context);
  return {context,calls,events,get,keys,process,confirmations,cameraCount:()=>cameraCount,serverStage:value=>{stage=value;revision++;},action:()=>process.children.find(x=>x.id==='spaceCycleBar')?.children.find(x=>x.id==='automaticWorkflowAction') || get('laserCadTab').children.find(x=>x.id==='spaceCycleBar')?.children.find(x=>x.id==='automaticWorkflowAction'),flush:()=>new Promise(resolve=>setImmediate(resolve)),status};
 }
 function event(changes={}){return {code:'Space',target:{closest:()=>null},preventDefault(){this.prevented=true;},...changes};}
-test('Automated uses three fresh Space presses for processing, Start and direct reset',async()=>{
- const h=harness({confirm:false});await h.flush();const c=h.context.window.SpaceCycle;
- for(const stage of ['ready_start','awaiting_completion','ready_process']){h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,stage)}
- assert.equal(h.calls.length,3);assert.equal(h.confirmations.length,0);assert.equal(h.cameraCount(),1);
- assert.ok(h.calls[2][0].endsWith('/reset'));h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.cameraCount(),2);
+test('Automated uses two fresh Space presses for processing and Start then returns ready',async()=>{
+ const h=harness({returnAfterStart:true,confirm:false});await h.flush();const c=h.context.window.SpaceCycle;
+ for(const stage of ['ready_start','ready_process']){h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,stage)}
+ assert.equal(h.calls.length,2);assert.equal(h.confirmations.length,0);assert.equal(h.cameraCount(),1);
+ assert.equal(h.context.state.activeView,'process');assert.ok(!h.calls.some(([url])=>url.endsWith('/reset')));
 });
 
 test('Enter and numeric Enter cannot run processing, frame or Start',async()=>{
@@ -51,11 +52,10 @@ test('focused next-action button cannot be activated by Enter but accepts one Sp
  button.listeners.keydown(event());await h.flush();assert.equal(h.calls[0][0],'process');
 });
 
-test('native Space requests Start then a separate Space acknowledges completion; Tab is ignored',async()=>{
- const h=harness({stage:'ready_start',confirm:false});await h.flush();const c=h.context.window.SpaceCycle;h.context.state.activeView='lasercad';
- c.nativePress('Space');c.nativePress('Space');await h.flush();assert.equal(h.status().stage,'awaiting_completion');assert.equal(h.calls.length,1);
- c.nativePress('Tab');c.nativePress('Enter');await h.flush();assert.equal(h.calls.length,1);
- c.nativePress('Space');await h.flush();assert.equal(h.status().stage,'ready_process');assert.equal(h.calls.length,2);assert.equal(h.confirmations.length,0);
+test('native Space requests Start and returns Process Sheath; Tab is ignored',async()=>{
+ const h=harness({stage:'ready_start',returnAfterStart:true});await h.flush();h.context.state.activeView='lasercad';
+ const c=h.context.window.SpaceCycle;c.nativePress('Tab');await h.flush();assert.equal(h.calls.length,0);
+ c.nativePress('Space');c.nativePress('Space');await h.flush();assert.equal(h.status().stage,'ready_process');assert.equal(h.calls.length,1);assert.equal(h.context.state.activeView,'process');
 });
 
 test('processing remains single-flight; additional presses cannot Start before processing finishes',async()=>{
@@ -115,12 +115,10 @@ test('completion Space cannot silently recover an interrupted cycle',async()=>{
  const h=harness({stage:'interrupted'});await h.flush();h.context.window.SpaceCycle.keydown(event());h.context.state.activeView='lasercad';h.context.window.SpaceCycle.nativePress('Space');await h.flush();assert.equal(h.calls.length,0);assert.equal(h.confirmations.length,0);
 });
 
-test('every cycle first Space refreshes camera before capture; later Start/completion presses do not refresh',async()=>{
- const h=harness();await h.flush();const c=h.context.window.SpaceCycle;
+test('every cycle first Space refreshes camera and post-Start return never captures',async()=>{
+ const h=harness({returnAfterStart:true});await h.flush();const c=h.context.window.SpaceCycle;
  c.keydown(event());await h.flush();assert.equal(h.cameraCount(),1);
- assert.ok(h.events.indexOf('hide')<h.events.indexOf('refresh_camera'));
- assert.ok(h.events.indexOf('refresh_camera')<h.events.indexOf('process'));
- for(let i=0;i<1;i++){h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.cameraCount(),1)}
+ assert.ok(h.events.indexOf('hide')<h.events.indexOf('refresh_camera'));assert.ok(h.events.indexOf('refresh_camera')<h.events.indexOf('process'));
  h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,'ready_process');assert.equal(h.cameraCount(),1);
  h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.cameraCount(),2);assert.equal(h.status().stage,'ready_start');
 });
@@ -213,18 +211,11 @@ test('completion button still confirms; Tab does not bypass interrupted recovery
  assert.equal(h.confirmations.length,1);assert.equal(h.calls.length,0);assert.equal(h.status().stage,'interrupted');
 });
 
-test('two complete cycles refresh before each capture, Start without Run Box, and direct Space resets without extra clicks',async()=>{
- const h=harness({confirm:false});await h.flush();const c=h.context.window.SpaceCycle;
- for(let cycle=1;cycle<=2;cycle++){
-  h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,'ready_start');assert.equal(h.cameraCount(),cycle);
-  h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,'awaiting_completion');
-  h.keys.keyup({code:'Tab'});h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,'ready_process');
- }
- assert.equal(h.confirmations.length,0);assert.equal(h.calls.length,6);
- assert.ok(h.calls.every(([url,data])=>url==='process'||url.endsWith('/reset')||data.expected_stage==='ready_start'));
- assert.equal(h.events.filter(x=>x==='refresh_camera').length,2);
+test('two cycles refresh and Start once each without Run Box or completion reset',async()=>{
+ const h=harness({returnAfterStart:true});await h.flush();const c=h.context.window.SpaceCycle;
+ for(let i=0;i<2;i++)for(const stage of ['ready_start','ready_process']){h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,stage)}
+ assert.equal(h.cameraCount(),2);assert.equal(h.calls.filter(([url])=>url.endsWith('/action')).length,2);assert.equal(h.calls.filter(([url])=>url.endsWith('/reset')).length,0);assert.equal(h.confirmations.length,0);
 });
-
 
 test('Manual keeps first Space through Download Document; next fresh Space resets without Start',async()=>{
  const h=harness({mode:'manual',confirm:false});await h.flush();const c=h.context.window.SpaceCycle;
@@ -237,16 +228,15 @@ test('Manual completion Space stays blocked in editable fields and with modifier
  const h=harness({stage:'awaiting_manual_completion'});await h.flush();h.context.window.SpaceCycle.keydown(event({shiftKey:true}));h.context.window.SpaceCycle.keydown(event({target:{closest:()=>({})}}));await h.flush();assert.equal(h.calls.length,0);
 });
 
-test('Read-only and Manager use Space-only completion in both assigned modes',async()=>{
+test('Read-only and Manager retain assigned Manual flow and Automated post-Start home return',async()=>{
  for(const role of ['viewer','editor'])for(const mode of ['manual','automated']){
-  const h=harness({mode,confirm:false});await h.flush();h.context.state.user={role,workflow_mode:mode,permissions:['read','download','operate']};const c=h.context.window.SpaceCycle;
+  const h=harness({mode,returnAfterStart:true,confirm:false});await h.flush();h.context.state.user={role,workflow_mode:mode};const c=h.context.window.SpaceCycle;
   c.keydown(event());await h.flush();assert.equal(h.cameraCount(),1);
-  if(mode==='automated'){h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,'awaiting_completion')}
-  else assert.equal(h.status().stage,'awaiting_manual_completion');
-  h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,'ready_process');assert.equal(h.cameraCount(),1);assert.equal(h.confirmations.length,0);assert.ok(h.calls.at(-1)[0].endsWith('/reset'));
+  assert.equal(h.status().stage,mode==='automated'?'ready_start':'awaiting_manual_completion');
+  h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,'ready_process');assert.equal(h.cameraCount(),1);assert.equal(h.confirmations.length,0);
+  assert.ok(h.calls.at(-1)[0].endsWith(mode==='automated'?'/action':'/reset'));
  }
 });
-
 
 test('Space on the focused completion button resets directly and prevents a second browser activation',async()=>{
  const h=harness({stage:'awaiting_completion',confirm:false});await h.flush();const c=h.context.window.SpaceCycle;
@@ -256,20 +246,13 @@ test('Space on the focused completion button resets directly and prevents a seco
 });
 
 
-test('third Space sends only reset and fourth Space refreshes before new capture without another Start',async()=>{
- const h=harness({confirm:false});await h.flush();const c=h.context.window.SpaceCycle;
- c.keydown(event());await h.flush();
- h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.status().stage,'awaiting_completion');
- const before=h.calls.length;h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();
- assert.equal(h.calls.length,before+1);assert.ok(h.calls.at(-1)[0].endsWith('/reset'));assert.equal(h.calls.at(-1)[1].completed,true);assert.equal(h.calls.at(-1)[1].operator_confirmed_idle,true);
- assert.equal(h.status().stage,'ready_process');assert.equal(h.cameraCount(),1);assert.equal(h.confirmations.length,0);
- const startCount=()=>h.calls.filter(([url,data])=>url.endsWith('/action')&&data.expected_stage==='ready_start').length;
- assert.equal(startCount(),1);const eventIndex=h.events.length;
- h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();
- const next=h.events.slice(eventIndex);assert.ok(next.indexOf('refresh_camera')>=0);assert.ok(next.indexOf('refresh_camera')<next.indexOf('process'));
- assert.equal(h.cameraCount(),2);assert.equal(h.calls.at(-1)[0],'process');assert.equal(startCount(),1);assert.equal(h.status().stage,'ready_start');
+test('next Space after post-Start return refreshes for new sheath without another Start',async()=>{
+ const h=harness({returnAfterStart:true});await h.flush();const c=h.context.window.SpaceCycle;
+ c.keydown(event());await h.flush();h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();
+ const before=h.events.length;h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();const events=h.events.slice(before);
+ assert.ok(events.indexOf('refresh_camera')<events.indexOf('process'));assert.equal(h.cameraCount(),2);
+ assert.equal(h.calls.filter(([url])=>url.endsWith('/action')).length,1);assert.equal(h.calls.filter(([url])=>url.endsWith('/reset')).length,0);
 });
-
 
 test('completion Space clicks Process Sheath once after reset and focuses the next-cycle workspace',async()=>{
  for(const stage of ['awaiting_completion','awaiting_manual_completion'])for(const input of ['native','process-button']){
@@ -390,4 +373,42 @@ test('unavailable Process Sheath handler can recover later without resetting twi
  const h=harness({stage:'awaiting_completion',confirm:false});await h.flush();h.context.state.activeView='lasercad';const original=h.get('processSheath').onclick;h.get('processSheath').onclick=null;
  const c=h.context.window.SpaceCycle;assert.equal((await c.nativeComplete({...h.status()})).status,'recovery_pending');assert.equal(h.calls.length,1);
  h.get('processSheath').onclick=original;c.nativePress('Space');await h.flush();assert.equal(h.calls.length,1);assert.equal(h.events.filter(e=>e==='click:processSheath').length,1);assert.equal(h.context.state.activeView,'process');assert.equal(h.confirmations.length,0);
+});
+
+
+test('two Space workflow returns home immediately after Start without reset, popup or recapture',async()=>{
+ const h=harness({returnAfterStart:true,confirm:false});await h.flush();const c=h.context.window.SpaceCycle;
+ c.keydown(event());await h.flush();assert.equal(h.status().stage,'ready_start');
+ h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();
+ assert.equal(h.status().stage,'ready_process');assert.equal(h.context.state.activeView,'process');
+ assert.equal(h.calls.length,2);assert.ok(h.calls[1][0].endsWith('/action'));
+ assert.equal(h.calls.some(([url])=>url.endsWith('/reset')),false);
+ assert.equal(h.confirmations.length,0);assert.equal(h.cameraCount(),1);
+ assert.equal(h.events.filter(e=>e==='click:processSheath').length,1);
+ c.keydown(event({repeat:true}));await h.flush();assert.equal(h.calls.length,2);
+ h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.cameraCount(),2);assert.equal(h.status().stage,'ready_start');
+});
+
+test('lost Start response reads receipt and returns home without another Start',async()=>{
+ const h=harness({stage:'ready_start',returnAfterStart:true});await h.flush();const api=h.context.api;
+ h.context.api=async(url,options)=>{const result=await api(url,options);if(url.endsWith('/action'))throw new Error('lost response');return result;};
+ h.context.window.SpaceCycle.keydown(event());await h.flush();
+ assert.equal(h.context.state.activeView,'process');assert.equal(h.calls.length,1);assert.equal(h.cameraCount(),0);assert.equal(h.confirmations.length,0);
+});
+
+test('failed post-Start navigation retries navigation only and never clicks Process Sheath twice',async()=>{
+ const h=harness({stage:'ready_start',returnAfterStart:true});await h.flush();const nav=h.context.navigateSection;let failed=true;
+ h.get('processSheath').onclick=()=>{h.events.push('click:processSheath');throw new Error('handler failed');};
+ h.context.navigateSection=view=>{if(failed&&view==='process')throw new Error('navigation failed');nav(view);};
+ h.context.window.SpaceCycle.keydown(event());await h.flush();assert.equal(h.calls.length,1);assert.equal(h.context.state.activeView,'lasercad');
+ failed=false;h.keys.keyup({code:'Space'});h.context.window.SpaceCycle.nativePress('Space');await h.flush();
+ assert.equal(h.context.state.activeView,'process');assert.equal(h.calls.length,1);assert.equal(h.cameraCount(),0);assert.equal(h.events.filter(e=>e==='click:processSheath').length,1);
+});
+
+test('duplicate second Space while Start is pending dispatches once',async()=>{
+ let release;const gate=new Promise(resolve=>release=resolve);
+ const h=harness({stage:'ready_start',returnAfterStart:true});await h.flush();const api=h.context.api;
+ h.context.api=async(url,options)=>{if(url.endsWith('/action'))await gate;return api(url,options);};
+ const c=h.context.window.SpaceCycle;c.keydown(event());c.nativePress('Space');c.nativePress('Space');
+ release();await h.flush();assert.equal(h.calls.length,1);assert.equal(h.context.state.activeView,'process');assert.equal(h.cameraCount(),0);
 });

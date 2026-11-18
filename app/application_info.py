@@ -5,8 +5,8 @@ import os
 import sys
 from app.export.lasercad import find_lasercad
 
-APP_VERSION = '2026.11.18.2'
-UPDATE_NAME = 'Remote-injected completion Space consumed safely; physical and first/second workflow unchanged'
+APP_VERSION = '2026.11.18.3'
+UPDATE_NAME = 'Two-Space workflow: process, then Start and return to Process Sheath'
 
 def application_info(config, windows_getter):
     desktop = bool(getattr(sys, 'frozen', False))

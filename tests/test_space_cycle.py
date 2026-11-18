@@ -80,11 +80,14 @@ def test_api_steps_dispatch_once_and_block_job_mutations(laser_workspace,monkeyp
     for endpoint in ['/api/export','/api/capture','/api/config']:
         assert client.post(endpoint,json={}).status_code==409
     response=advance(s);assert response.status_code==200,response.text
-    assert response.json()['stage']=='awaiting_completion' and calls[-1][0]=='start'
+    assert response.json()['stage']=='ready_process' and calls[-1][0]=='start'
+    assert response.json()['started_from']['cycle_id']==s['cycle_id']
+    assert response.json()['physical_completion_verified'] is False
     assert calls[-1][1]['confirm_start'] is True
-    assert advance(response.json()).status_code==409
+    assert advance(s).status_code==409
     completed=client.post('/api/laser-control/space-cycle/reset',json={'cycle_id':response.json()['cycle_id'],'revision':response.json()['revision'],'completed':True,'operator_confirmed_idle':True})
-    assert completed.status_code==200 and completed.json()['stage']=='ready_process'
+    assert completed.status_code==409
+    assert calls[-1][0]=='start' and len(calls)==1
 
 def test_uncertain_dispatch_is_interrupted_not_retried(laser_workspace,monkeypatch):
     import app.main as main

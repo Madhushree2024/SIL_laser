@@ -98,6 +98,33 @@ class SpaceCycle:
             self.state.update(stage='interrupted',revision=self.state['revision']+1,message=str(message))
             self._save('interrupted')
 
+    def return_after_start(self, result):
+        """Rearm UI after dispatch, without claiming physical completion or idle."""
+        with self.lock:
+            self._load()
+            if self.state['stage'] != 'start_pending':
+                raise ValueError('Start cycle was interrupted; no automatic rearm is authorized.')
+            before = deepcopy(self.state)
+            candidate = self._fresh()
+            candidate['started_from'] = {
+                'cycle_id':before['cycle_id'], 'revision':before['revision']-1,
+                'request_id':before['request_id'], 'job':deepcopy(before.get('job')),
+                'last_request':deepcopy(result), 'physical_completion_verified':False}
+            candidate['message'] = ('Start requested. Returned to Process Sheath. '
+                'Wait until cutting has stopped and the machine is idle before pressing Space for the next sheath.')
+            try:
+                self._save('start_requested_return_to_process', snapshot=candidate)
+            except Exception:
+                try: durable = json.loads(self.loaded_path.read_text(encoding='utf-8'))
+                except (OSError, ValueError): durable = None
+                if durable == candidate:
+                    self.state = candidate
+                    return self.status()
+                self.state = before
+                raise
+            self.state = candidate
+            return self.status()
+
     def reset(self, cycle_id, revision, completed, operator_confirmed_idle):
         with self.lock:
             self._check(cycle_id,revision)
