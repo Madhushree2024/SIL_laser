@@ -69,9 +69,34 @@ def native_space_focus(api, form, record, *, completion=False):
     return True, 'completion' if completion else 'workflow'
 
 
+class ComboBoxInfo(ctypes.Structure):
+    _fields_=[('cbSize',wintypes.DWORD),('item',wintypes.RECT),('button',wintypes.RECT),
+              ('state',wintypes.DWORD),('combo',wintypes.HWND),('edit',wintypes.HWND),('list',wintypes.HWND)]
+
+
+def declare_focus_api(user, gui_type):
+    # HWND is pointer-sized; LONG (GWL_STYLE) remains 32-bit on 64-bit Windows.
+    signatures = {
+        'GetForegroundWindow': ([], wintypes.HWND),
+        'GetParent': ([wintypes.HWND], wintypes.HWND),
+        'GetWindow': ([wintypes.HWND,wintypes.UINT], wintypes.HWND),
+        'GetWindowThreadProcessId': ([wintypes.HWND,ctypes.POINTER(wintypes.DWORD)], wintypes.DWORD),
+        'GetGUIThreadInfo': ([wintypes.DWORD,ctypes.POINTER(gui_type)], wintypes.BOOL),
+        'GetClassNameW': ([wintypes.HWND,wintypes.LPWSTR,ctypes.c_int], ctypes.c_int),
+        'GetWindowTextW': ([wintypes.HWND,wintypes.LPWSTR,ctypes.c_int], ctypes.c_int),
+        'IsWindowEnabled': ([wintypes.HWND], wintypes.BOOL),
+        'GetWindowLongW': ([wintypes.HWND,ctypes.c_int], wintypes.LONG),
+        'GetComboBoxInfo': ([wintypes.HWND,ctypes.POINTER(ComboBoxInfo)], wintypes.BOOL),
+        'IsWindowVisible': ([wintypes.HWND], wintypes.BOOL),
+    }
+    for name,(arguments,result) in signatures.items():
+        function=getattr(user,name);function.argtypes=arguments;function.restype=result
+
+
 class WindowsSpaceFocusAPI:
     def __init__(self, user, gui_type):
         self.user, self.gui_type = user, gui_type
+        declare_focus_api(user,gui_type)
     def foreground(self): return self.user.GetForegroundWindow()
     def chain(self, hwnd):
         pending, seen = [hwnd], set()
@@ -95,10 +120,8 @@ class WindowsSpaceFocusAPI:
     def closed_readonly_combo(self, hwnd):
         # A USB selection dropdown can retain focus after download. A closed
         # CBS_DROPDOWNLIST has no editable text; an open dropdown is still protected.
-        class ComboInfo(ctypes.Structure):
-            _fields_=[('cbSize',wintypes.DWORD),('item',wintypes.RECT),('button',wintypes.RECT),('state',wintypes.DWORD),('combo',wintypes.HWND),('edit',wintypes.HWND),('list',wintypes.HWND)]
         if self.user.GetWindowLongW(hwnd,-16)&0x3 != 0x3:return False
-        info=ComboInfo();info.cbSize=ctypes.sizeof(info)
+        info=ComboBoxInfo();info.cbSize=ctypes.sizeof(info)
         return bool(self.user.GetComboBoxInfo(hwnd,ctypes.byref(info)) and info.list and not self.user.IsWindowVisible(info.list))
 
 

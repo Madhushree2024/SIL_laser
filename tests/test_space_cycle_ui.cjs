@@ -4,16 +4,16 @@ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../frontend/space-cycle.js'),'utf8');
 function harness(options={}){
  const nodes=new Map(),keys={};
- function node(){return {hidden:false,children:[],listeners:{},setAttribute(){},append(...items){this.children.push(...items);for(const i of items)i.parentNode=this;},prepend(item){item.parentNode=this;this.children.unshift(item);},addEventListener(k,f){this.listeners[k]=f;},click(){this.onclick?.();this.listeners.click?.();},focus(){context.document.activeElement=this;}};}
+ function node(){const attrs={},classes=new Set();return {hidden:false,dataset:{},children:[],listeners:{},classList:{contains:k=>classes.has(k),toggle(k,on){if(on)classes.add(k);else classes.delete(k);}},setAttribute(k,v){attrs[k]=String(v);},getAttribute:k=>attrs[k]??null,append(...items){this.children.push(...items);for(const i of items)i.parentNode=this;},prepend(item){item.parentNode=this;this.children.unshift(item);},addEventListener(k,f){this.listeners[k]=f;},click(){if(!this.disabled){this.onclick?.();this.listeners.click?.();}},focus(){context.document.activeElement=this;}};}
  const get=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);};
  const process=node(),state={user:{},activeView:'process',pendingMutations:0},calls=[],events=[];
  let cameraCount=0;const confirmations=[];
  get('processSheath').textContent='Process Sheath';
- let stage=options.stage || 'ready_process',revision=0,cycleId='cycle';
- const status=()=>({stage,cycle_id:cycleId,revision,next_action:stage.startsWith('ready_')?'advance':null,message:stage});
- const context={console,state,displayError:error=>error?.message || String(error),$:get,document:{hidden:false,hasFocus:()=>true,createElement:node,querySelector:()=>process,addEventListener(k,f){keys[k]=f;}},window:{addEventListener(){},LaserCADTab:{hide:async()=>{events.push('hide');if(options.hide)await options.hide();}}},hasPermission:()=>options.permission!==false,crypto:{randomUUID:()=>String(Math.random())},confirm:text=>{confirmations.push(text);return options.confirm!==false},setInterval(){},setTimeout,Date,message(){},navigateSection:view=>{state.activeView=view;events.push('view:'+view);},
+ let stage=options.stage || 'ready_process',revision=0,cycleId='cycle',resetReceipt=null;
+ const status=()=>({stage,cycle_id:cycleId,revision,job:stage==='ready_process'?null:{path:'job.dxf'},reset_from:resetReceipt,next_action:stage.startsWith('ready_')?'advance':null,message:stage});
+ const context={console,state,displayError:error=>error?.message || String(error),$:get,document:{body:{dataset:{screen:'process'}},hidden:false,hasFocus:()=>true,createElement:node,querySelector:()=>process,addEventListener(k,f){keys[k]=f;}},window:{addEventListener(){},LaserCADTab:{hide:async()=>{events.push('hide');if(options.hide)await options.hide();}}},hasPermission:()=>options.permission!==false,crypto:{randomUUID:()=>String(Math.random())},confirm:text=>{confirmations.push(text);return options.confirm!==false},setInterval(fn){context.pollTick=fn;},setTimeout,Date,message(text){events.push('message:'+text);},navigateSection:view=>{state.activeView=view;context.document.body.dataset.screen=view;get('processSheath').setAttribute('aria-pressed',String(view==='process'));get('laserCadTab').classList.toggle('active',view==='lasercad');events.push('view:'+view);},
  refreshCamera:async settings=>{assert.equal(settings.required,true);cameraCount++;events.push('refresh_camera');if(options.camera)await options.camera();return options.refreshResult===false ? false : true;},
- api:async(url,options)=>{if(!options?.method)return status();const data=JSON.parse(options.body);calls.push([url,data]);assert.equal(data.revision,revision);revision++;if(url.endsWith('/reset')){stage='ready_process';cycleId='cycle-'+revision;}else stage={ready_start:'awaiting_completion'}[stage];return status();},
+ api:async(url,options)=>{if(!options?.method)return status();const data=JSON.parse(options.body);calls.push([url,data]);assert.equal(data.revision,revision);revision++;if(url.endsWith('/reset')){resetReceipt={cycle_id:data.cycle_id,revision:data.revision,completed:data.completed,operator_confirmed_idle:data.operator_confirmed_idle};stage='ready_process';cycleId='cycle-'+revision;}else stage={ready_start:'awaiting_completion'}[stage];return status();},
  runWorkflow:async s=>{assert.equal(s.stage,'ready_process');calls.push(['process',s]);events.push('process');if(options.process)await options.process();stage=options.mode==='manual'?'awaiting_manual_completion':'ready_start';revision++;},};
  get('processSheath').onclick=()=>{events.push('click:processSheath');context.navigateSection('process');};
  vm.runInNewContext(source,context);
@@ -313,4 +313,81 @@ test('malformed or stale native completion never authorizes Start or captures a 
  const h=harness({stage:'ready_start'});await h.flush();h.context.state.activeView='lasercad';const c=h.context.window.SpaceCycle;
  await c.nativeComplete({...h.status()});await c.nativeComplete({stage:'awaiting_completion',cycle_id:'old-cycle',revision:0});await h.flush();
  assert.equal(h.calls.length,0);assert.equal(h.cameraCount(),0);assert.equal(h.status().stage,'ready_start');
+});
+
+
+test('reset succeeds and broken Process Sheath click recovers through the existing navigator only once',async()=>{
+ for(const failure of ['throw','noop']){
+  const h=harness({stage:'awaiting_completion',confirm:false});await h.flush();h.context.state.activeView='lasercad';let clicks=0;
+  h.get('processSheath').onclick=()=>{clicks++;if(failure==='throw')throw Error('handler failed');};
+  const result=await h.context.window.SpaceCycle.nativeComplete({...h.status()});await h.flush();
+  assert.equal(result.status,'reset');assert.equal(clicks,1);assert.equal(h.calls.length,1);assert.ok(h.calls[0][0].endsWith('/reset'));
+  assert.equal(h.context.state.activeView,'process');assert.equal(h.context.document.body.dataset.screen,'process');assert.equal(h.cameraCount(),0);assert.equal(h.confirmations.length,0);
+ }
+});
+
+test('persistent navigation failure keeps recovery and a fresh Space retries navigation, never reset or Start',async()=>{
+ const h=harness({stage:'awaiting_completion',confirm:false});await h.flush();h.context.state.activeView='lasercad';const navigator=h.context.navigateSection;let clicks=0;
+ h.get('processSheath').onclick=()=>{clicks++;};h.context.navigateSection=()=>{throw Error('DOM unavailable')};
+ const c=h.context.window.SpaceCycle;const old={...h.status()};assert.equal((await c.nativeComplete(old)).status,'recovery_pending');
+ assert.equal(h.status().stage,'ready_process');assert.equal(h.calls.length,1);assert.equal(clicks,1);
+ h.context.navigateSection=navigator;c.nativePress('Space');await h.flush();
+ assert.equal(h.context.state.activeView,'process');assert.equal(h.calls.length,1);assert.equal(clicks,1);assert.equal(h.cameraCount(),0);
+ h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.cameraCount(),1);assert.equal(h.calls.at(-1)[0],'process');
+});
+
+test('lost reset response is reconciled with durable receipt without another reset POST',async()=>{
+ const h=harness({stage:'awaiting_completion',confirm:false});await h.flush();h.context.state.activeView='lasercad';const original=h.context.api;
+ h.context.api=async(url,opts)=>{const result=await original(url,opts);if(url.endsWith('/reset'))throw Error('response lost');return result;};
+ const result=await h.context.window.SpaceCycle.nativeComplete({...h.status()});await h.flush();
+ assert.equal(result.status,'reset');assert.equal(h.context.state.activeView,'process');assert.equal(h.calls.length,1);assert.equal(h.events.filter(e=>e==='click:processSheath').length,1);assert.equal(h.cameraCount(),0);assert.equal(h.confirmations.length,0);
+});
+
+test('lost reset response and failed status read block later actions until receipt is checked',async()=>{
+ const h=harness({stage:'awaiting_completion'});await h.flush();h.context.state.activeView='lasercad';const original=h.context.api;let unavailable=true;
+ h.context.api=async(url,opts)=>{if(!opts?.method&&unavailable)throw Error('network unavailable');const result=await original(url,opts);if(url.endsWith('/reset'))throw Error('response lost');return result;};
+ const c=h.context.window.SpaceCycle;const old={...h.status()};assert.equal((await c.nativeComplete(old)).status,'recovery_pending');assert.equal(h.calls.length,1);
+ unavailable=false;c.nativePress('Space');await h.flush();assert.equal(h.context.state.activeView,'process');assert.equal(h.calls.length,1);assert.equal(h.cameraCount(),0);
+});
+
+test('a failed uncommitted reset is checked before a later operator Space retries it',async()=>{
+ const h=harness({stage:'awaiting_completion'});await h.flush();h.context.state.activeView='lasercad';const original=h.context.api;let fail=true,attempts=0;const order=[];
+ h.context.api=async(url,opts)=>{order.push(opts?.method?'POST':'GET');if(url.endsWith('/reset')){attempts++;if(fail)throw Error('storage error');}return original(url,opts);};
+ const c=h.context.window.SpaceCycle;assert.equal((await c.nativeComplete({...h.status()})).status,'recovery_pending');assert.equal(attempts,1);assert.equal(h.status().stage,'awaiting_completion');
+ fail=false;order.length=0;c.nativePress('Space');await h.flush();assert.deepEqual(order.slice(0,2),['GET','POST']);assert.equal(attempts,2);assert.equal(h.status().stage,'ready_process');assert.equal(h.context.state.activeView,'process');
+});
+
+test('changed backend cycle without matching receipt never authorizes a recovery reset',async()=>{
+ const h=harness({stage:'awaiting_completion'});await h.flush();h.context.state.activeView='lasercad';const original=h.context.api;let attempts=0;
+ h.context.api=async(url,opts)=>{if(url.endsWith('/reset')){attempts++;h.serverStage('interrupted');throw Error('uncertain response');}return original(url,opts);};
+ const c=h.context.window.SpaceCycle;await c.nativeComplete({...h.status()});c.nativePress('Space');await h.flush();assert.equal(attempts,1);assert.equal(h.cameraCount(),0);assert.equal(h.events.filter(e=>e==='click:processSheath').length,0);
+});
+
+test('concurrent native completion callbacks use one reset and one Process Sheath activation',async()=>{
+ const h=harness({stage:'awaiting_completion'});await h.flush();h.context.state.activeView='lasercad';const c=h.context.window.SpaceCycle,snapshot={...h.status()};
+ await Promise.all([c.nativeComplete(snapshot),c.nativeComplete(snapshot),c.nativeComplete(snapshot)]);await h.flush();assert.equal(h.calls.length,1);assert.equal(h.events.filter(e=>e==='click:processSheath').length,1);assert.equal(h.cameraCount(),0);
+});
+
+test('an older in-flight status poll cannot restore a completed cycle after reset',async()=>{
+ const h=harness({stage:'awaiting_completion'});await h.flush();h.context.state.activeView='lasercad';const c=h.context.window.SpaceCycle,old={...h.status()},original=h.context.api;let release,gate=true;
+ h.context.api=(url,opts)=>{if(!opts?.method&&gate){gate=false;return new Promise(resolve=>release=()=>resolve(old));}return original(url,opts);};
+ const polling=h.context.pollTick();await h.flush();await c.nativeComplete(old);release();await polling;await h.flush();
+ h.keys.keyup({code:'Space'});c.keydown(event());await h.flush();assert.equal(h.cameraCount(),1);assert.equal(h.calls.filter(c=>c[0].endsWith('/reset')).length,1);
+});
+
+
+test('completion runs the actual existing Process Sheath handler and navigation function',async()=>{
+ const h=harness({stage:'awaiting_completion',confirm:false});await h.flush();h.context.state.activeView='lasercad';h.get('laserCadTab').classList.toggle('active',true);h.get('laserCadTab').dataset.panel='lasercad';
+ const app=fs.readFileSync(path.join(__dirname,'../frontend/app.js'),'utf8');const first=app.indexOf('function navigateSection(view) {'),last=app.indexOf('// Each placed polygon',first);
+ h.context.document.querySelectorAll=selector=>selector==='.panel-view'?[h.get('laserCadTab')]:[];
+ h.context.updateViewerMode=()=>{};h.context.draw=()=>{};h.context.fitCanvas=()=>{};h.context.window.requestAnimationFrame=()=>{};
+ vm.runInNewContext(app.slice(first,last)+"\n$('processSheath').onclick = () => navigateSection('process');",h.context);
+ const result=await h.context.window.SpaceCycle.nativeComplete({...h.status()});await h.flush();
+ assert.equal(result.status,'reset');assert.equal(h.context.state.activeView,'process');assert.equal(h.context.document.body.dataset.screen,'process');assert.equal(h.get('processSheath').getAttribute('aria-pressed'),'true');assert.equal(h.get('laserCadTab').classList.contains('active'),false);assert.equal(h.calls.length,1);assert.equal(h.cameraCount(),0);
+});
+
+test('unavailable Process Sheath handler can recover later without resetting twice',async()=>{
+ const h=harness({stage:'awaiting_completion',confirm:false});await h.flush();h.context.state.activeView='lasercad';const original=h.get('processSheath').onclick;h.get('processSheath').onclick=null;
+ const c=h.context.window.SpaceCycle;assert.equal((await c.nativeComplete({...h.status()})).status,'recovery_pending');assert.equal(h.calls.length,1);
+ h.get('processSheath').onclick=original;c.nativePress('Space');await h.flush();assert.equal(h.calls.length,1);assert.equal(h.events.filter(e=>e==='click:processSheath').length,1);assert.equal(h.context.state.activeView,'process');assert.equal(h.confirmations.length,0);
 });

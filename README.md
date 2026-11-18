@@ -2,11 +2,11 @@
 
 Camera-based sheath measurement, template nesting, DXF export and embedded LaserCAD automation for the SIL / Trocen AWC7813 workflow.
 
-Current release: **v2026.11.17.4**.
+Current release: **v2026.11.18.1**.
 
 ## Install the desktop application
 
-Open [Releases](https://github.com/Madhushree2024/SIL_laser/releases/latest) and download **TemplateCutting-Setup-With-Python-2026.11.17.4.zip**. Download the installer asset, rather than GitHub's automatically generated Source code ZIP.
+Open [Releases](https://github.com/Madhushree2024/SIL_laser/releases/latest) and download **TemplateCutting-Setup-With-Python-2026.11.18.1.zip**. Download the installer asset, rather than GitHub's automatically generated Source code ZIP.
 
 1. Wait until the machine is idle, then close Template Cutting and LaserCAD normally.
 2. Extract the entire installer ZIP into a new folder.
@@ -27,7 +27,7 @@ In Automated mode:
 
 Manual mode stops automation after Download Document. The remaining machine actions are manual; a fresh Space after cutting acknowledges completion and resets. Admin assigns other users' workflow modes in Account. Datum is a separate manual button and is not part of this key sequence.
 
-The app does not infer physical cutting completion from controller telemetry. Download Document submission is not a verified transfer-success message. v2026.11.17.4 passed 109 focused software tests, including simulated native Windows keyboard events; the connected-machine completion check remains necessary.
+The app does not infer physical cutting completion from controller telemetry. Download Document submission is not a verified transfer-success message. v2026.11.18.1 passed 133 focused software tests. Actual Windows x64 API declarations, hidden test controls, and pass-through hook installation/removal were validated. Keyboard events for the workflow were simulated; connected LaserCAD/cutting validation remains necessary.
 
 ## Git pull and download behavior
 
@@ -66,3 +66,10 @@ The last command builds the application into `dist/releases`. To recreate the fu
 Usable travel: **915 × 630 mm**. Cutting defaults: **90 mm/s**, **10% power**, **Cut**. Shared-cut spacing: **0 mm**; edge clearance: **3 mm**; rotation step: **5°**; nesting precision: **0.1 mm**. USB selection: `MachName:_AWC_D2713611` when present on the connected machine.
 
 The four surveyed markers define camera measurements with ID 12 centre as the working reference. The nested template bounding box defines the separate local DXF job origin. Saved marker-to-machine calibration supplies photographed machine placement. Export and LaserCAD import coordinates are separate transformations; correct controller positioning mode still matters.
+
+
+## Completion reliability in v2026.11.18.1
+
+A committed reset includes a durable receipt identifying the completed cycle and its revision. If the reset response is lost, the UI reads backend status before deciding whether another reset is needed. It never replays an already-committed reset. Process Sheath is clicked at most once for that completion; the existing navigator recovers a failed navigation without creating another handler. A pending recovery cannot Start or capture. A later fresh Space begins the normal camera-refresh workflow only after recovery completes.
+
+Reset publishes `ready_process` in memory only after the candidate has been durably saved. Failed saves retain the previous cycle, and uncertain storage outcomes block further reset attempts until storage access and the saved record can be verified. The event journal and cycle ID/revision checks are retained. First-Space processing and second-Space Start implementations are unchanged.

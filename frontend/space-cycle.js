@@ -1,6 +1,7 @@
 /* Operator-paced sequence; every press authorizes exactly one stage. */
 (() => {
   let current = null, pending = false, pollPending = false, held = new Set(), preparingCamera = false;
+  let completionRecovery = null, statusEpoch = 0;
   const endpoint = '/api/laser-control/space-cycle';
   const labels = {ready_process:'Space 1: Refresh camera → Capture → Download Document',
     processing:'Space 1: Processing — wait',
@@ -16,8 +17,8 @@
   const processHost=document.querySelector('.cycle-dashboard');processHost.prepend(bar);
   function decorate() {
     if (!current) return;
-    const text=preparingCamera ? 'Space 1: Refreshing camera — wait' : labels[current.stage] || current.stage;
-    for (const id of ['workflowStatus','cycleNextHelp','processStageDetail']) { const el=$(id);if(el)el.textContent=preparingCamera ? text : current.message || text; }
+    const text=completionRecovery ? completionRecovery.message : preparingCamera ? 'Space 1: Refreshing camera — wait' : labels[current.stage] || current.stage;
+    for (const id of ['workflowStatus','cycleNextHelp','processStageDetail']) { const el=$(id);if(el)el.textContent=completionRecovery || preparingCamera ? text : current.message || text; }
     if ($('cycleState')) $('cycleState').textContent=text;
   }
   function render() {
@@ -26,21 +27,22 @@
     const parent=laser ? $('laserCadTab') : processHost;
     if(bar.parentNode!==parent)parent.prepend(bar);
     bar.hidden=!allowed || (!laser && !process);
-    title.textContent=preparingCamera ? 'Space 1: Refreshing camera — wait' : labels[current?.stage] || 'Loading Space workflow…';
-    note.textContent=preparingCamera ? 'Reconnecting the camera before capture. Please wait.' : current?.message || 'Press Space to refresh the camera, capture and process through Download Document.';
-    next.textContent=current?.next_action || 'Wait';next.disabled=pending || !current?.next_action;
+    title.textContent=completionRecovery ? completionRecovery.message : preparingCamera ? 'Space 1: Refreshing camera — wait' : labels[current?.stage] || 'Loading Space workflow…';
+    note.textContent=completionRecovery ? completionRecovery.message : preparingCamera ? 'Reconnecting the camera before capture. Please wait.' : current?.message || 'Press Space to refresh the camera, capture and process through Download Document.';
+    next.textContent=completionRecovery ? (completionRecovery.committed ? 'Return to Process Sheath' : 'Retry completion') : current?.next_action || 'Wait';next.disabled=pending || (!completionRecovery && !current?.next_action);
     const reference=$('automaticWorkflow');
     if(reference) { reference.hidden=!allowed;reference.textContent='Automatic workflow';reference.title=labels[current?.stage] || 'Show automatic workflow status'; }
     done.hidden=!['awaiting_completion','awaiting_manual_completion'].includes(current?.stage);reset.hidden=current?.stage!=='interrupted';
     done.disabled=reset.disabled=pending;
     const datum=$('manualDatum');
-    if(datum)datum.disabled=!allowed || pending || state.workflowBusy || state.pendingMutations || state.cameraRefreshing || datum.dataset?.pending==='true' || !['ready_process','interrupted'].includes(current?.stage);
+    if(datum)datum.disabled=!allowed || !!completionRecovery || pending || state.workflowBusy || state.pendingMutations || state.cameraRefreshing || datum.dataset?.pending==='true' || !['ready_process','interrupted'].includes(current?.stage);
     decorate();
   }
   async function refresh() {
-    if(pollPending || !state.user || !hasPermission('operate')) {render();return;}
-    pollPending=true;
-    try{current=await api(endpoint,{cache:'no-store'});render();}catch(e){note.textContent=displayError(e);next.disabled=true;current=null;}
+    if(pollPending || (completionRecovery && pending) || !state.user || !hasPermission('operate')) {render();return;}
+    pollPending=true;const epoch=statusEpoch;
+    try{const result=await api(endpoint,{cache:'no-store'});if(epoch===statusEpoch){current=result;render();}}
+    catch(e){if(epoch===statusEpoch){note.textContent=displayError(e);next.disabled=true;if(!completionRecovery)current=null;}}
     finally{pollPending=false;}
   }
   async function advance() {
@@ -73,25 +75,90 @@
     }catch(e){message(displayError(e),true);}
     finally{preparingCamera=false;pending=false;await refresh();}
   }
+  function resetMatches(status, recovery) {
+    const receipt=status?.reset_from, original=recovery.snapshot;
+    return status?.stage==='ready_process' && status.job===null && status.cycle_id!==original.cycle_id &&
+      receipt?.cycle_id===original.cycle_id && receipt.revision===original.revision &&
+      receipt.completed===recovery.completed && receipt.operator_confirmed_idle===true;
+  }
+  function stillAwaitingReset(status, recovery) {
+    const old=recovery.snapshot;
+    return status?.cycle_id===old.cycle_id && status.revision===old.revision && status.stage===old.stage;
+  }
+  async function completionStatus() {
+    ++statusEpoch;
+    current=await api(endpoint,{cache:'no-store'});
+    return current;
+  }
+  function processScreenReady() {
+    return state.activeView==='process' && document.body?.dataset.screen==='process' &&
+      $('processSheath')?.getAttribute('aria-pressed')==='true' && !$('laserCadTab')?.classList.contains('active');
+  }
+  async function returnToProcess(recovery) {
+    // A display failure must not prevent the existing navigation handler.
+    try{await window.LaserCADTab?.hide();}catch(e){message(displayError(e),true);}
+    if(!recovery.clickAttempted) {
+      const button=$('processSheath');
+      if(!button || button.disabled || typeof button.onclick!=='function')throw new Error('Process Sheath is unavailable. Press Space to retry navigation only.');
+      recovery.clickAttempted=true;
+      try{button.click();}catch(e){recovery.navigationError=displayError(e);}
+    }
+    // Reuse the existing navigator only if the one button activation failed.
+    // Never click/dispatch the Process Sheath handler a second time.
+    if(!processScreenReady())navigateSection('process');
+    if(!processScreenReady())throw new Error('Cycle reset is saved, but Process Sheath did not open. Press Space to retry navigation only.');
+    render();
+    if(recovery.confirmedBySpace)$('overlay')?.focus({preventScroll:true});
+  }
+  async function performCompletion(recovery, checkFirst) {
+    if(checkFirst) {
+      const status=await completionStatus();
+      if(resetMatches(status,recovery))recovery.committed=true;
+      else if(recovery.committed || !stillAwaitingReset(status,recovery))throw new Error('The cycle changed without a matching reset receipt. No reset or machine action was retried.');
+    }
+    if(!recovery.committed) {
+      ++statusEpoch;
+      try{
+        const old=recovery.snapshot;
+        current=await api(endpoint+'/reset',{method:'POST',body:JSON.stringify({cycle_id:old.cycle_id,revision:old.revision,completed:recovery.completed,operator_confirmed_idle:true})});
+        if(!resetMatches(current,recovery))throw new Error('Reset response did not identify the completed cycle.');
+        recovery.committed=true;
+      }catch(error){
+        // An error/timeout is not evidence that reset failed. Read the durable
+        // receipt before allowing any later operator-authorized retry.
+        const status=await completionStatus();
+        if(resetMatches(status,recovery))recovery.committed=true;
+        else throw new Error('Completion could not be verified: '+displayError(error)+'. Press Space to check status and retry completion; cutting will not restart.');
+      }
+    }
+    recovery.message='Cycle reset saved — returning to Process Sheath';render();
+    await returnToProcess(recovery);
+    completionRecovery=null;++statusEpoch;render();
+    return {status:'reset',stage:current.stage};
+  }
+  async function resumeCompletion() {
+    if(pending || !completionRecovery || !state.user || !hasPermission('operate') || state.workflowBusy || state.pendingMutations)return;
+    const recovery=completionRecovery;pending=true;render();
+    try{return await performCompletion(recovery,true);}
+    catch(error){recovery.message=displayError(error);message(recovery.message,true);return {status:'recovery_pending'};}
+    finally{pending=false;await refresh();}
+  }
   async function finish(completed, {confirmedBySpace = false, expectedSnapshot = null} = {}) {
+    if(completionRecovery)return resumeCompletion();
     if(pending || !current || !state.user || !hasPermission('operate') || state.workflowBusy || state.pendingMutations)return;
     const snapshot={...(expectedSnapshot || current)};
     if(snapshot.cycle_id!==current.cycle_id || !(completed ? ['awaiting_completion','awaiting_manual_completion'] : ['interrupted']).includes(snapshot.stage))return;
     pending=true;render();
     try{
-      // A deliberate Space after cutting is the operator's completion/idle acknowledgement.
-      // Mouse completion and interrupted-cycle recovery retain their confirmation.
       if((!completed || !confirmedBySpace) && !confirm(completed ? 'Has cutting finished and is the machine now idle? Confirming resets the cycle. The next Space press captures the next sheath.' : 'Have you inspected the interrupted request and confirmed the machine is idle? Reset does not stop the machine.'))return;
-      current=await api(endpoint+'/reset',{method:'POST',body:JSON.stringify({cycle_id:snapshot.cycle_id,revision:snapshot.revision,completed,operator_confirmed_idle:true})});
-      // Publish completion before navigating. Navigation alone never confirms a cut.
-      await window.LaserCADTab?.hide();
-      $('processSheath').click();
-      if(confirmedBySpace) $('overlay')?.focus({preventScroll:true});
-      return {status:'reset',stage:current.stage};
-    }catch(e){message(displayError(e),true);}
-    finally{
-      // Keep the browser key held until key-up: reset must not reuse the same
-      // physical press for the next capture. Native presses are edge-filtered.
+      completionRecovery={snapshot,completed,confirmedBySpace,committed:false,clickAttempted:false,message:'Confirming cycle completion'};
+      ++statusEpoch;
+      return await performCompletion(completionRecovery,false);
+    }catch(error){
+      if(completionRecovery)completionRecovery.message=displayError(error);
+      message(displayError(error),true);return {status:'recovery_pending'};
+    }finally{
+      // Release is still required: completing/recovering cannot capture again.
       pending=false;await refresh();
     }
   }
@@ -100,6 +167,7 @@
     return code==='Space' && ['ready_process','ready_start'].includes(current?.stage);
   }
   function press(code) {
+    if(code==='Space' && completionRecovery){void resumeCompletion();return;}
     if(completionKey(code) && ['awaiting_completion','awaiting_manual_completion'].includes(current?.stage))void finish(true,{confirmedBySpace:true});
     else if(accepts(code))void advance();
   }
@@ -130,20 +198,21 @@
   // A navigation button can retain focus after returning from the native pane.
   // Handle its completion Space explicitly instead of silently ignoring it.
   $('processSheath')?.addEventListener('keydown',e=>{
-    if(e.code==='Space' && ['awaiting_completion','awaiting_manual_completion'].includes(current?.stage)) {
+    if(e.code==='Space' && (completionRecovery || ['awaiting_completion','awaiting_manual_completion'].includes(current?.stage))) {
       if(e.repeat || held.has(e.code)){e.preventDefault();return;}
       keydown(e,true);
     }
   });
   $('automaticWorkflow')?.addEventListener('click',()=>{navigateSection('process');render();});
-  next.addEventListener('click',()=>void advance());done.addEventListener('click',()=>void finish(true));reset.addEventListener('click',()=>void finish(false));
+  next.addEventListener('click',()=>void (completionRecovery ? resumeCompletion() : advance()));done.addEventListener('click',()=>void finish(true));reset.addEventListener('click',()=>void finish(false));
   async function nativeComplete(snapshot) {
     // A native completion edge is pinned to its cycle/revision. It cannot call
     // advance(), even if polling or a delayed callback sees a different stage.
+    if(completionRecovery && !document.hidden)return resumeCompletion();
     if(state.activeView!=='lasercad' || document.hidden || !snapshot || !['awaiting_completion','awaiting_manual_completion'].includes(snapshot.stage))return {status:'ignored'};
     held.delete('Space');
     return await finish(true,{confirmedBySpace:true,expectedSnapshot:snapshot}) || {status:'blocked'};
   }
-  window.SpaceCycle={advance,keydown,decorate,nativeComplete,nativePress:(code)=>{if(code==='Space' && state.activeView==='lasercad' && !document.hidden){held.delete('Space');press(code);}}};
+  window.SpaceCycle={advance,keydown,decorate,nativeComplete,nativePress:(code)=>{if(code==='Space' && (completionRecovery || state.activeView==='lasercad') && !document.hidden){held.delete('Space');press(code);}}};
   setInterval(()=>void refresh(),750);void refresh();
 })();

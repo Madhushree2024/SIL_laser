@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.17.4",
+  "version": "2026.11.18.1",
   "original_source": "C:\\SIL-Laser-Automation\\Project",
   "repository_copy": "C:\\SIL-Laser-Automation\\Repository",
-  "application_logic_changes": false,
+  "application_logic_changes": "Completion reliability only; first processing and second Start unchanged",
   "repository_config_difference": "LaserCAD executable blank for portability",
   "workspace_data_excluded": true
 }

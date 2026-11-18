@@ -15,6 +15,7 @@ class SpaceCycle:
         self.lock = RLock()
         self.loaded_path = None
         self.state = None
+        self.reset_storage_uncertain = False
 
     def _load(self):
         path = Path(self.root_getter())/'laser_control_state/space-cycle.json'
@@ -47,15 +48,17 @@ class SpaceCycle:
         return dict(cycle_id=str(uuid4()), revision=0, stage=stage, job=None, message='', sequence='space-start-tab-v2',
                     physical_completion_verified=False)
 
-    def _save(self, event):
+    def _save(self, event, *, snapshot=None):
+        saved = self.state if snapshot is None else snapshot
         self.loaded_path.parent.mkdir(parents=True, exist_ok=True)
-        record = {**deepcopy(self.state), 'event':event, 'time':datetime.now(timezone.utc).isoformat()}
+        record = {**deepcopy(saved), 'event':event, 'time':datetime.now(timezone.utc).isoformat()}
+        if snapshot is not None: record['persistence'] = 'prepared_before_atomic_replace'
         # Journal before publishing state: no action may be dispatched if persistence fails.
         with (self.loaded_path.parent/'space-cycle-events.jsonl').open('a',encoding='utf-8') as stream:
             stream.write(json.dumps(record)+'\n'); stream.flush(); os.fsync(stream.fileno())
         temporary = self.loaded_path.with_suffix('.tmp')
         with temporary.open('w',encoding='utf-8') as stream:
-            json.dump(self.state,stream,indent=2); stream.flush(); os.fsync(stream.fileno())
+            json.dump(saved,stream,indent=2); stream.flush(); os.fsync(stream.fileno())
         temporary.replace(self.loaded_path)
 
     def status(self):
@@ -101,9 +104,28 @@ class SpaceCycle:
             if not operator_confirmed_idle: raise ValueError('Confirm the machine is idle.')
             expected = {'awaiting_completion','awaiting_manual_completion'} if completed else {'interrupted'}
             if self.state['stage'] not in expected: raise ValueError('Wait for the current action, or interrupt the cycle before resetting.')
+            if self.reset_storage_uncertain:
+                raise ValueError('Reset storage could not be verified. Restore storage access and reopen the app before retrying.')
+            before = deepcopy(self.state)
             self._save('operator_confirmed_cutting_complete' if completed else 'operator_confirmed_idle_recovery')
-            self.state = self._fresh()
-            self._save('reset')
+            candidate = self._fresh()
+            candidate['reset_from'] = {'cycle_id':cycle_id, 'revision':revision,
+                                       'completed':bool(completed), 'operator_confirmed_idle':True}
+            try:
+                # Persist the candidate before exposing ready_process to any caller.
+                self._save('reset', snapshot=candidate)
+            except Exception:
+                # Reconcile an uncertain outcome (e.g. an exception after replace).
+                # Never publish ready_process unless that exact record is durable.
+                try: durable = json.loads(self.loaded_path.read_text(encoding='utf-8'))
+                except (OSError, ValueError): durable = None
+                if durable == candidate:
+                    self.state = candidate
+                    return self.status()
+                self.state = before
+                self.reset_storage_uncertain = durable != before
+                raise
+            self.state = candidate
             return self.status()
 
 

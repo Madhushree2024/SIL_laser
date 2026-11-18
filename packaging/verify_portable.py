@@ -137,14 +137,14 @@ assert 'pendingDisplayUpdates' in (home/'_internal/frontend/app.js').read_text(e
 assert "JSON.parse(options.body).action === 'show'" in (home/'_internal/frontend/app.js').read_text(encoding='utf-8')
 assert 'No stage was triggered.' in (home/'_internal/frontend/space-cycle.js').read_text(encoding='utf-8')
 
-assert version_result['version']=='2026.11.17.4'
+assert version_result['version']=='2026.11.18.1'
 assert version_result['app_path']==str((home/'TemplateCutting.exe').resolve())
 assert 'applicationInfo' in (home/'_internal/frontend/index.html').read_text(encoding='utf-8')
 assert '/api/application-info' in (home/'_internal/frontend/lasercad-tab.js').read_text(encoding='utf-8')
 recording_module=types.ModuleType('frozen_operator_recording')
 exec(reader.extract('app.laser_control.operator_recording'),recording_module.__dict__)
 recorder=recording_module.OperatorRecorder(lambda:workspace,
-    lambda:{'app_version':'2026.11.17.4','job':{}},
+    lambda:{'app_version':'2026.11.18.1','job':{}},
     lambda:{'available':False,'note':'Isolated verification; no hardware','machine_commands_sent':False},
     interval=60)
 session=recorder.start('verification',origin_mode='machine_zero')
@@ -194,7 +194,7 @@ assert config.read_bytes()==after,'Later intentional preferences must be preserv
 report={**info,'installer_verified':verified.strip(),'fresh_and_repeat_install_passed':True,
         'actual_frozen_startup_upgrade_passed':True,'calibration_preserved':True,'manual_recipe_preserved_after_restart':True,
         'camera_profile_sha256':hashlib.sha256(cam_before).hexdigest(),
-        'focused_tests_passed':240,'space_ui_tests_passed':31,'all_javascript_tests_passed':46,'space_only_compiled_contract_verified':True,'completion_space_compiled_verified':True,'space_direct_completion_verified':True,'account_workflow_migration_verified':True,'manual_workflow_compiled_verified':True,'mandatory_camera_refresh_assets_verified':True,'navigation_and_version_tests_passed':3,'recorder_ui_check_passed':True,'version_display_javascript_check_passed':True,'packaged_app_version':'2026.11.17.4','remote_hardware_transfer_tested':False,
+        'focused_tests_passed':240,'space_ui_tests_passed':31,'all_javascript_tests_passed':46,'space_only_compiled_contract_verified':True,'completion_space_compiled_verified':True,'space_direct_completion_verified':True,'account_workflow_migration_verified':True,'manual_workflow_compiled_verified':True,'mandatory_camera_refresh_assets_verified':True,'navigation_and_version_tests_passed':3,'recorder_ui_check_passed':True,'version_display_javascript_check_passed':True,'packaged_app_version':'2026.11.18.1','remote_hardware_transfer_tested':False,
         'no_machine_commands_sent':True}
 (w/'role-ui-final-verification.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
 print(json.dumps(report,indent=2))

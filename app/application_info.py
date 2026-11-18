@@ -5,8 +5,8 @@ import os
 import sys
 from app.export.lasercad import find_lasercad
 
-APP_VERSION = '2026.11.17.4'
-UPDATE_NAME = 'Native LaserCAD completion Space: owner-aware focus, completion-only cycle-pinned reset to Process Sheath'
+APP_VERSION = '2026.11.18.1'
+UPDATE_NAME = 'Reliable completion recovery, durable reset receipts and Windows x64 API declarations; processing and Start unchanged'
 
 def application_info(config, windows_getter):
     desktop = bool(getattr(sys, 'frozen', False))

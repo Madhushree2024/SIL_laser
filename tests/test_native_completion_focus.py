@@ -61,7 +61,9 @@ def test_foreground_gui_thread_is_queried_explicitly_instead_of_thread_zero():
     calls=[]
     def inspect(thread,pointer):
         calls.append(thread);value=ctypes.cast(pointer,ctypes.POINTER(Gui)).contents;value.focus=31;return True
-    api=WindowsSpaceFocusAPI(SimpleNamespace(GetWindowThreadProcessId=lambda hwnd,p:77,GetGUIThreadInfo=inspect),Gui)
+    functions={name:(lambda *args:0) for name in ['GetForegroundWindow','GetParent','GetWindow','GetWindowThreadProcessId','GetGUIThreadInfo','GetClassNameW','GetWindowTextW','IsWindowEnabled','GetWindowLongW','GetComboBoxInfo','IsWindowVisible']}
+    functions.update(GetWindowThreadProcessId=lambda hwnd,p:77,GetGUIThreadInfo=inspect)
+    api=WindowsSpaceFocusAPI(SimpleNamespace(**functions),Gui)
     assert api.focus(30)==(31,0);assert calls==[77]
 
 def test_native_completion_dispatch_is_pinned_and_never_calls_generic_start_handler():
