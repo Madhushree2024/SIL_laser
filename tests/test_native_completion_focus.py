@@ -85,7 +85,8 @@ def test_noncompletion_stages_never_produce_completion_context(stage):
 
 @pytest.mark.parametrize('stage',['awaiting_completion','awaiting_manual_completion'])
 @pytest.mark.parametrize('focus_case',['owned-panel','host-panel','closed-usb'])
-def test_production_hook_consumes_down_repeat_and_up_and_queues_one_completion(monkeypatch,stage,focus_case):
+@pytest.mark.parametrize('key_flags',[0,0x10,0x12])
+def test_production_hook_consumes_down_repeat_and_up_and_queues_one_completion(monkeypatch,stage,focus_case,key_flags):
     """Run the real hook callback with simulated Win32 events, not SendInput."""
     import ctypes
     from ctypes import wintypes
@@ -106,7 +107,7 @@ def test_production_hook_consumes_down_repeat_and_up_and_queues_one_completion(m
     class Key(ctypes.Structure):
         _fields_=[('vkCode',wintypes.DWORD),('scanCode',wintypes.DWORD),('flags',wintypes.DWORD),('time',wintypes.DWORD),('extra',ctypes.c_size_t)]
     def events(*args):
-        key=Key();key.vkCode=0x20
+        key=Key();key.vkCode=0x20;key.flags=key_flags
         for message in [0x0100,0x0100,0x0101]:consumed.append(captured['hook'](0,message,ctypes.addressof(key)))
         return 0
     user.functions.update(SetWindowsHookExW=Function(install),GetMessageW=Function(events))
@@ -121,4 +122,4 @@ def test_production_hook_consumes_down_repeat_and_up_and_queues_one_completion(m
     bridge=DesktopSpaceKeys(window,host,completion_ready=lambda:snapshot)
     bridge._listen()
     assert consumed==[1,1,1]
-    assert bridge.queue.get_nowait()==snapshot and bridge.queue.empty()
+    assert bridge.queue.get_nowait()==({**snapshot,'key_source':'remote_injected'} if key_flags else snapshot) and bridge.queue.empty()

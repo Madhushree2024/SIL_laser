@@ -5,8 +5,8 @@ import os
 import sys
 from app.export.lasercad import find_lasercad
 
-APP_VERSION = '2026.11.18.1'
-UPDATE_NAME = 'Reliable completion recovery, durable reset receipts and Windows x64 API declarations; processing and Start unchanged'
+APP_VERSION = '2026.11.18.2'
+UPDATE_NAME = 'Remote-injected completion Space consumed safely; physical and first/second workflow unchanged'
 
 def application_info(config, windows_getter):
     desktop = bool(getattr(sys, 'frozen', False))

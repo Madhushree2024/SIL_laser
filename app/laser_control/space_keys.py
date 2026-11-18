@@ -1,7 +1,8 @@
 """App-scoped Space-only workflow bridge for a hosted foreign-process LaserCAD window.
 
 Consumes a down/up pair only inside our active native pane. Other applications,
-text editors, parameter dialogs and modified/injected keystrokes are untouched.
+text editors, parameter dialogs and modified keystrokes are untouched.
+Remote-injected Space is accepted only for an existing completion context.
 No machine command is sent from the keyboard hook.
 """
 import ctypes
@@ -69,6 +70,26 @@ def native_space_focus(api, form, record, *, completion=False):
     return True, 'completion' if completion else 'workflow'
 
 
+def embedded_start_focused(api, form, record):
+    """Completion-only fallback: prove Space would reach our embedded Start.
+
+    This is not a click. It never authorizes generic advance/Start, and cannot
+    claim a detached LaserCAD window or another application's focused control.
+    """
+    target=record['hwnd']
+    if form not in set(api.chain(target)):return False
+    foreground=api.foreground()
+    if not foreground or not ({form,target}&set(api.chain(foreground))):return False
+    focus,flags=api.focus(foreground)
+    if flags&(0x04|0x10|0x20) or not api.enabled(target):return False
+    if not focus or api.pid(focus)!=record['pid']:return False
+    chain=list(api.chain(focus))
+    if target not in chain:return False
+    for hwnd in chain:
+        if hwnd not in {form,target} and api.kind(hwnd).casefold()=='#32770' and api.title(hwnd).replace(' ','').casefold() not in {'controlpanel','downloaddocument'}:return False
+    return 'button' in api.kind(focus).casefold() and api.title(focus).replace('&','').strip().casefold()=='start'
+
+
 class ComboBoxInfo(ctypes.Structure):
     _fields_=[('cbSize',wintypes.DWORD),('item',wintypes.RECT),('button',wintypes.RECT),
               ('state',wintypes.DWORD),('combo',wintypes.HWND),('edit',wintypes.HWND),('list',wintypes.HWND)]
@@ -131,6 +152,8 @@ class DesktopSpaceKeys:
         self.completion_ready=completion_ready
         self.queue=Queue(maxsize=1);self.stop=Event();self.edges={0x20:SpaceEdge()};self.thread_id=0
         self.active=False
+        self.remote_edges={0x20:SpaceEdge()}
+        self.remote_completion=None
     def completion_key_ready(self):
         # The hook reads only a cached stage, never files, locks or a controller.
         try:
@@ -147,6 +170,23 @@ class DesktopSpaceKeys:
         except Exception:
             logging.exception('Native completion context unavailable')
             return None
+    def remote_completion_snapshot(self):
+        # Injected input is eligible only for completion, never ready_start.
+        # Keep the original context while its saved reset awaits UI recovery.
+        try:
+            value=self.completion_ready()
+            if not isinstance(value,dict):return None
+            if value.get('stage') in {'awaiting_completion','awaiting_manual_completion'}:
+                return {key:value[key] for key in ('cycle_id','revision','stage')}
+            old=self.remote_completion;receipt=value.get('reset_from') or {}
+            if (old and value.get('stage')=='ready_process' and value.get('job') is None and
+                    value.get('cycle_id')!=old['cycle_id'] and receipt.get('cycle_id')==old['cycle_id'] and
+                    receipt.get('revision')==old['revision'] and receipt.get('completed') is True and
+                    receipt.get('operator_confirmed_idle') is True):return dict(old)
+            self.remote_completion=None
+            return None
+        except (KeyError,TypeError):return None
+        except Exception:return None
     def start(self):
         Thread(target=self._dispatch,daemon=True,name='space-ui-dispatch').start()
         Thread(target=self._listen,daemon=True,name='space-native-keyboard').start()
@@ -164,7 +204,7 @@ class DesktopSpaceKeys:
                     if code.get('blocked'):
                         logging.info('Native Space not routed: %s',code['blocked'])
                         continue
-                    logging.info('Native completion Space: cycle=%s revision=%s',code['cycle_id'],code['revision'])
+                    logging.info('Native completion Space: cycle=%s revision=%s source=%s',code['cycle_id'],code['revision'],code.get('key_source','physical'))
                     result=self.window.evaluate_js('window.SpaceCycle && window.SpaceCycle.nativeComplete('+json.dumps(code)+')')
                     logging.info('Native completion handler result: %s',result)
                 else:
@@ -207,6 +247,52 @@ class DesktopSpaceKeys:
         def hook(code,wparam,lparam):
             if code>=0:
                 key=ctypes.cast(lparam,ctypes.POINTER(Key)).contents
+                if key.vkCode in self.remote_edges and key.flags&0x10 and wparam in (0x0100,0x0101,0x0104,0x0105):
+                    edge=self.remote_edges[key.vkCode];down=wparam in (0x0100,0x0104)
+                    try:
+                        if edge.down:
+                            # Never promote a held second-stage gesture into a
+                            # confirmation. Once completion is pending, suppress
+                            # its remaining native repeats/up instead of Start.
+                            if (not edge.consumed and not any(user.GetAsyncKeyState(v)&0x8000 for v in (0x10,0x11,0x12,0x5B,0x5C))
+                                    and self.remote_completion_snapshot() is not None):
+                                allowed,_=eligible(True)
+                                if not allowed:
+                                    records=list(self.host.records.values())
+                                    if len(records)==1:
+                                        form=int(self.window.native.Handle.ToInt64())
+                                        allowed=embedded_start_focused(focus_api,form,records[0])
+                                if allowed:edge.consumed=True
+                            consume,_=edge.key(down,False)
+                            if consume:return 1
+                        elif down:
+                            modified=any(user.GetAsyncKeyState(v)&0x8000 for v in (0x10,0x11,0x12,0x5B,0x5C))
+                            snapshot=None if modified else self.remote_completion_snapshot()
+                            if snapshot is None:
+                                # Track an ignored second-stage gesture too: a
+                                # held key cannot become completion after Start.
+                                edge.key(True,False)
+                            if snapshot is not None:
+                                allowed,reason=eligible(True)
+                                if not allowed:
+                                    records=list(self.host.records.values())
+                                    if len(records)==1:
+                                        form=int(self.window.native.Handle.ToInt64())
+                                        allowed=embedded_start_focused(focus_api,form,records[0])
+                                consume,fire=edge.key(True,allowed)
+                                if fire:
+                                    self.remote_completion=dict(snapshot)
+                                    if not self.active:
+                                        payload={**snapshot,'key_source':'remote_injected'}
+                                        self.active=True
+                                        try:self.queue.put_nowait(payload)
+                                        except Full:self.active=False
+                                elif not allowed and not self.active and reason!='outside_host':
+                                    try:self.queue.put_nowait({'blocked':'remote_completion:'+reason})
+                                    except Full:pass
+                                if consume:return 1
+                    except Exception:
+                        logging.exception('Remote completion Space inspection failed; no workflow action requested')
                 if key.vkCode in self.edges and not key.flags&0x10 and wparam in (0x0100,0x0101,0x0104,0x0105):
                     down=wparam in (0x0100,0x0104)
                     try:
